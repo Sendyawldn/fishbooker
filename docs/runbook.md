@@ -148,3 +148,5 @@ tail -f backend/storage/logs/laravel.log
 | Database Backup   | Dilakukan setiap jam 00:00 (WIB)                            |
 | Log Retention     | Log aplikasi disimpan selama 30 hari                        |
 | Financial Records | Disimpan permanen (Immutable) di tabel `financial_journals` |
+
+---
