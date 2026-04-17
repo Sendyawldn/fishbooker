@@ -226,7 +226,7 @@ Semua endpoint mengembalikan kode status HTTP yang sesuai:
 Backend terintegrasi dengan WhatsApp Gateway (Fonnte / Wootalk) yang dipicu setelah status pembayaran `Paid`.
 
 ```bash
-# Trigger manual pengecekan pembayaran expired via scheduler
+# Trigger manual pengecekan pembayaran expired via scheduler.
 ./vendor/bin/sail artisan schedule:run
 ```
 ````

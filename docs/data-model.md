@@ -158,4 +158,4 @@ Penting untuk mengetahui siapa yang mengubah harga lapak atau siapa yang membata
 
 ### UUID vs BigInt
 
-Menggunakan UUID untuk entitas yang terekspos ke publik (`bookings`, `users`) dan BigInt untuk data internal (`slots`) demi performa.
+Menggunakan UUID untuk entitas yang terekspos ke publik (`bookings`, `users`) dan BigInt untuk data internal (`slots`) demi performa

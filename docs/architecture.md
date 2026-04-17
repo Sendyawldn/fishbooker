@@ -132,7 +132,7 @@ Job scheduler untuk otomatis membatalkan pesanan yang tidak dibayar tepat waktu.
 
 ### PostgreSQL / MySQL
 
-Sebagai **source of truth** untuk:
+Sebagai **source of truth** untuk :
 
 - data user
 - nomor lapak
@@ -141,7 +141,7 @@ Sebagai **source of truth** untuk:
 
 ### Redis
 
-Digunakan untuk:
+Digunakan untuk :
 
 - cache status lapak
 - performa akses cepat

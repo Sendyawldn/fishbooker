@@ -38,4 +38,4 @@ Fitur dianggap selesai jika:
 
 - Admin bisa mengubah harga lapak dan perubahan langsung terlihat di Frontend Pelanggan.
 - Log transaksi keuangan muncul secara otomatis setelah booking dikonfirmasi.
-- Perubahan status lapak ke `Maintenance` berhasil menghilangkan tombol booking di sisi pelanggan.
+- Perubahan status lapak ke `Maintenance` berhasil menghilangkan tombol booking di sisi pelanggan
