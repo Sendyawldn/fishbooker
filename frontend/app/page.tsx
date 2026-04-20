@@ -1,7 +1,8 @@
 import { getSlots } from "@/lib/api";
 import InteractivePondSection from "@/components/InteractivePondSection";
+import AuthHeader from "@/components/AuthHeader";
 import type { Slot } from "@/lib/api";
-import { Fish, MapPin, User, Waves } from "lucide-react"; // Import icons
+import { Waves } from "lucide-react";
 
 export default async function HomePage() {
   let slots: Slot[] = [];
@@ -27,50 +28,7 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#F8FAFC]">
-      {/* 1. Navbar / Header Section */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2 group cursor-pointer">
-            <div className="bg-emerald-600 p-2 rounded-xl text-white group-hover:rotate-12 transition-transform">
-              <Fish size={24} />
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">
-                FISHBOOKER
-              </h1>
-              <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                <MapPin size={10} /> Gunung Putri, Bogor
-              </div>
-            </div>
-          </div>
-
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <a href="#" className="hover:text-emerald-600 transition-colors">
-              Denah Kolam
-            </a>
-            <a href="#" className="hover:text-emerald-600 transition-colors">
-              Riwayat Booking
-            </a>
-            <a href="#" className="hover:text-emerald-600 transition-colors">
-              Bantuan
-            </a>
-          </div>
-
-          <div className="flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-full border border-slate-200">
-            <div className="text-right hidden sm:block">
-              <p className="text-[10px] font-bold text-slate-400 uppercase leading-none">
-                Hello,
-              </p>
-              <p className="text-xs font-bold text-slate-700 leading-tight">
-                Sendi Awaludin
-              </p>
-            </div>
-            <div className="h-8 w-8 bg-emerald-500 rounded-full flex items-center justify-center text-white ring-2 ring-white">
-              <User size={18} />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <AuthHeader />
 
       {/* 2. Hero Section */}
       <section className="px-6 py-12 max-w-6xl mx-auto">

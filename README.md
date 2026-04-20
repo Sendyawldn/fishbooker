@@ -22,62 +22,83 @@ FISHBOOKER adalah solusi lengkap untuk mengelola operasional kolam pemancingan d
 
 Proyek ini menggunakan arsitektur **monorepo** dengan dua bagian utama:
 
-```
+````
 fishbooker/
-├── backend/          # API Server (Laravel)
-├── frontend/         # Web UI (Next.js + React)
-└── docs/             # Dokumentasi Teknis
-```
+# FISHBOOKER
 
-### Backend
+FishBooker adalah aplikasi reservasi lapak pemancingan dengan fokus pada pencegahan double booking melalui mekanisme lock slot dan hold expiry.
 
-- **Framework**: Laravel (PHP)
-- **Database**: MySQL/PostgreSQL
-- **API**: RESTful API
-- **Authentication**: JWT Token
-- **Real-time**: WebSocket untuk live updates
+## Ringkasan
 
-### Frontend
+Project ini berjalan sebagai monorepo dengan tiga area utama:
 
-- **Framework**: Next.js 16.2.3
-- **UI Library**: React 19.2.4 + Shadcn UI
-- **Styling**: Tailwind CSS
-- **State Management**: TBD
-- **TypeScript**: Full type safety
+- backend: API Laravel untuk auth, slot management, dan booking flow
+- frontend: UI Next.js untuk denah interaktif dan alur booking
+- docs: dokumentasi teknis, arsitektur, API, roadmap
 
-## 🚀 Quick Start
+## Struktur Repository
 
-### Prerequisites
+```text
+fishbooker/
+|- backend/
+|- frontend/
+|- docs/
+|- README.md
+````
 
-- Node.js 18+
-- PHP 8.1+
-- Composer
-- Docker & Docker Compose (optional)
-- MySQL 8.0+ atau PostgreSQL 13+
+## Tech Stack
 
-### Setup Lokal
+Backend:
 
-#### 1. Clone Repository
+- PHP 8.3+
+- Laravel 13
+- Laravel Sanctum
+- MySQL (via Laravel Sail)
+- Redis (via Laravel Sail)
+
+Frontend:
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS
+
+## Fitur yang Sudah Tersedia
+
+- Login API berbasis Sanctum token
+- Public slot discovery
+- Admin slot CRUD (create, update, delete)
+- Booking flow dengan lock proses dan hold 15 menit
+- Penolakan booking bila slot masih di-hold user lain
+- Denah lapak interaktif di frontend
+
+## Quick Start
+
+### 1. Clone
 
 ```bash
 git clone https://github.com/Sendyawldn/fishbooker.git
 cd fishbooker
 ```
 
-#### 2. Setup Backend
+### 2. Setup Backend
 
 ```bash
 cd backend
 composer install
 cp .env.example .env
-php artisan key:generate
-php artisan migrate:fresh --seed
-php artisan serve
+./vendor/bin/sail up -d
+./vendor/bin/sail artisan key:generate
+./vendor/bin/sail artisan migrate:fresh --seed
 ```
 
-Backend akan berjalan di: `http://localhost:8000`
+Backend API default di:
 
-#### 3. Setup Frontend
+```text
+http://localhost:8000
+```
+
+### 3. Setup Frontend
 
 ```bash
 cd ../frontend
@@ -85,193 +106,84 @@ npm install
 npm run dev
 ```
 
-Frontend akan berjalan di: `http://localhost:3000`
+Frontend default di:
 
-### Menggunakan Docker Compose
-
-```bash
-docker-compose up -d
+```text
+http://localhost:3000
 ```
 
-## 📚 Dokumentasi
+## Environment Variables
 
-Dokumentasi lengkap tersedia di folder `docs/`:
+Frontend membaca variabel ini:
 
-- [**Architecture**](./docs/architecture.md) - Blueprint arsitektur sistem
-- [**Data Model**](./docs/data-model.md) - Struktur database dan relasi
-- [**API Documentation**](./docs/api.md) - Endpoint dan contract API
-- [**Local Dev Setup**](./docs/local-dev-setup.md) - Panduan setup development
-- [**Roadmap**](./docs/roadmap.md) - Rencana pengembangan fitur
-- [**Admin Requirements**](./docs/admin-requirements.md) - Requirement admin
-- [**Runbook**](./docs/runbook.md) - Panduan deployment dan troubleshooting
-
-## 🛠️ Development
-
-### Struktur Folder
-
-```
-backend/
-├── app/                    # Business Logic
-├── config/                 # Configuration Files
-├── database/               # Migrations & Seeds
-├── routes/                 # API Routes
-├── tests/                  # Test Cases
-└── ...
-
-frontend/
-├── app/                    # Next.js App Router
-├── components/             # React Components
-├── lib/                    # Utilities & Helpers
-├── public/                 # Static Assets
-└── ...
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_DEMO_EMAIL=test@example.com
+NEXT_PUBLIC_DEMO_PASSWORD=password
 ```
 
-### Commands
+Catatan:
 
-**Backend:**
+- Jika NEXT_PUBLIC_API_BASE_URL tidak diisi, frontend akan fallback ke http://localhost:8000.
+- Endpoint yang dipanggil frontend saat ini menggunakan prefix /api/v1.
 
-```bash
-# Database
-php artisan migrate              # Run migrations
-php artisan migrate:rollback     # Rollback migrations
-php artisan db:seed              # Seed database
+## Endpoint Penting
 
-# Testing
-php artisan test                 # Run tests
+Auth:
 
-# Development
-php artisan serve                # Start development server
-php artisan queue:work           # Start queue worker
-```
+- POST /api/v1/auth/login
 
-**Frontend:**
+Slot:
 
-```bash
-# Development
-npm run dev                      # Start dev server
+- GET /api/v1/slots
+- POST /api/v1/admin/slots (admin)
+- PATCH /api/v1/admin/slots/{slot_id} (admin)
+- DELETE /api/v1/admin/slots/{slot_id} (admin)
 
-# Production
-npm run build                    # Build for production
-npm start                        # Start production server
+Booking:
 
-# Linting
-npm run lint                     # Run ESLint
-```
+- POST /api/v1/bookings (auth required)
 
-## 🔐 Environment Variables
+Detail contract response ada di dokumentasi API.
 
-### Backend (.env)
+## Menjalankan Test
 
-```
-APP_NAME=FISHBOOKER
-APP_ENV=local
-APP_DEBUG=true
-APP_KEY=
-APP_URL=http://localhost:8000
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=fishbooker
-DB_USERNAME=root
-DB_PASSWORD=
-
-JWT_SECRET=your_jwt_secret
-```
-
-### Frontend (.env.local)
-
-```
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_APP_NAME=FISHBOOKER
-```
-
-## 📊 Key Concepts
-
-### Real-time Slot Locking
-
-Sistem yang memastikan tidak ada double booking dengan menggunakan optimistic locking di database dan WebSocket untuk live updates.
-
-### Transaction Integrity
-
-Setiap transaksi reservasi dan finansial dijamin atomicity melalui database transactions.
-
-### API Contract
-
-API dirancang dengan RESTful principles dan menggunakan standardized response format.
-
-## 🧪 Testing
-
-### Backend Testing
+Backend:
 
 ```bash
 cd backend
-php artisan test
+./vendor/bin/sail artisan test
 ```
 
-### Frontend Testing
+Frontend:
 
 ```bash
 cd frontend
-npm test
+npm run lint
+npm run build
 ```
 
-## 🚢 Deployment
+## Dokumentasi
 
-Untuk deployment ke production, lihat panduan di [Runbook](./docs/runbook.md).
+Dokumen utama ada di folder docs:
 
-### Docker Build
+- docs/api.md
+- docs/architecture.md
+- docs/data-model.md
+- docs/local-dev-setup.md
+- docs/roadmap.md
+- docs/frontend-roadmap.md
+- docs/runbook.md
 
-```bash
-docker build -f backend/Dockerfile -t fishbooker-backend .
-docker build -f frontend/Dockerfile -t fishbooker-frontend .
-```
+## Catatan Scope Repository
 
-## 🤝 Contributing
+Repository ini saat ini disederhanakan agar hanya melacak:
 
-Kami menerima kontribusi! Silakan:
+- backend
+- frontend
+- docs
+- README.md
 
-1. Fork repository ini
-2. Buat branch fitur (`git checkout -b feature/amazing-feature`)
-3. Commit perubahan Anda (`git commit -m 'Add amazing feature'`)
-4. Push ke branch (`git push origin feature/amazing-feature`)
-5. Buat Pull Request
+## Owner
 
-### Coding Standards
-
-- Backend: PSR-12 (Laravel conventions)
-- Frontend: ESLint config
-- Commit messages: Conventional Commits
-
-## 📝 License
-
-Proyek ini dilisensikan di bawah MIT License - lihat file [LICENSE](LICENSE) untuk detail.
-
-## 👥 Tim
-
-**Project Owner:** [Sendyawldn](https://github.com/Sendyawldn)
-
-## 📧 Support
-
-Untuk pertanyaan atau bantuan, silakan:
-
-- Buat [Issue](https://github.com/Sendyawldn/fishbooker/issues) baru
-- Hubungi melalui email support
-
-## 🗺️ Roadmap
-
-Fitur-fitur yang akan datang:
-
-- [ ] Mobile App (React Native)
-- [ ] Payment Gateway Integration
-- [ ] Advanced Analytics Dashboard
-- [ ] Multi-language Support
-- [ ] Notification System (Email/SMS/Push)
-- [ ] API Rate Limiting & Monitoring
-- [ ] Audit Logging
-
-Lihat [Full Roadmap](./docs/roadmap.md) untuk detail lengkap.
-
----
-
-**Last Updated**: 2026-04-17 | **Status**: 🟢 Active Development
+- Sendyawldn

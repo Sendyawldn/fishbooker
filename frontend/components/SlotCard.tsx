@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -10,7 +10,12 @@ import {
   Clock3,
   Fish,
 } from "lucide-react";
-import { ApiError, createBooking, login, Slot } from "@/lib/api";
+import { ApiError, createBooking, Slot } from "@/lib/api";
+import {
+  AuthSession,
+  readAuthSession,
+  subscribeAuthSession,
+} from "@/lib/auth-session";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,9 +26,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL ?? "test@example.com";
-const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? "password";
 
 interface SlotCardProps {
   slot: Slot;
@@ -73,6 +75,7 @@ export default function SlotCard({ slot }: SlotCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
@@ -91,15 +94,35 @@ export default function SlotCard({ slot }: SlotCardProps) {
     return "border-slate-200 bg-slate-100";
   }, [slot.status]);
 
+  useEffect(() => {
+    setSession(readAuthSession());
+
+    return subscribeAuthSession((nextSession) => {
+      setSession(nextSession);
+    });
+  }, []);
+
   const handleBooking = async () => {
+    const activeSession = readAuthSession();
+    if (!activeSession) {
+      setSuccessMessage(null);
+      setLockedUntil(null);
+      setErrorMessage(
+        "Silakan login dulu dari header untuk melanjutkan booking.",
+      );
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
     setLockedUntil(null);
 
     try {
-      const auth = await login(DEMO_EMAIL, DEMO_PASSWORD);
-      const bookingResponse = await createBooking(slot.id, auth.access_token);
+      const bookingResponse = await createBooking(
+        slot.id,
+        activeSession.accessToken,
+      );
 
       setSuccessMessage(bookingResponse.message);
       if (bookingResponse.valid_until) {
@@ -210,8 +233,14 @@ export default function SlotCard({ slot }: SlotCardProps) {
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="font-semibold text-slate-500">Akun Demo</span>
-              <span className="font-bold text-slate-700">{DEMO_EMAIL}</span>
+              <span className="font-semibold text-slate-500">Status Login</span>
+              {session ? (
+                <span className="font-bold text-emerald-700">
+                  {session.user.name} ({session.user.role})
+                </span>
+              ) : (
+                <span className="font-bold text-rose-700">Belum Login</span>
+              )}
             </div>
           </div>
 
@@ -251,10 +280,14 @@ export default function SlotCard({ slot }: SlotCardProps) {
             </Button>
             <Button
               onClick={handleBooking}
-              disabled={loading}
+              disabled={loading || !session}
               className="bg-slate-900 text-white hover:bg-slate-800"
             >
-              {loading ? "Memproses..." : "Konfirmasi Booking"}
+              {loading
+                ? "Memproses..."
+                : session
+                  ? "Konfirmasi Booking"
+                  : "Login Dulu"}
             </Button>
           </DialogFooter>
         </DialogContent>
