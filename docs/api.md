@@ -52,6 +52,12 @@ http://localhost:8000/api
 POST /api/v1/auth/login
 ```
 
+Compatibility path yang juga tersedia:
+
+```http
+POST /api/auth/login
+```
+
 Menggunakan Laravel Sanctum. Token yang dihasilkan harus disertakan dalam header:
 
 ```http
@@ -77,6 +83,75 @@ Response
     "role": "admin"
   }
 }
+```
+
+````md id="a1m7s5"
+### Admin Slot Management (Update Price / Status)
+
+```http
+PATCH /api/v1/admin/slots/{slot_id}
+```
+````
+
+Requires:
+
+```http
+Authorization: Bearer <token>
+```
+
+Requires Role: `ADMIN`
+
+Endpoint ini dipakai admin untuk:
+
+- mengubah harga lapak secara dinamis,
+- mengubah status lapak (`TERSEDIA`, `DIBOOKING`, `PERBAIKAN`).
+
+Request Body (minimal satu field wajib dikirim):
+
+```json
+{
+  "price": 75000,
+  "status": "PERBAIKAN"
+}
+```
+
+Response (Success)
+
+```json
+{
+  "success": true,
+  "message": "Lapak berhasil diperbarui",
+  "data": {
+    "id": 8,
+    "slot_number": 8,
+    "status": "PERBAIKAN",
+    "price": 75000,
+    "created_at": "2026-04-20T15:00:00.000000Z",
+    "updated_at": "2026-04-20T15:05:00.000000Z"
+  }
+}
+```
+
+Create Slot (Admin):
+
+```http
+POST /api/v1/admin/slots
+```
+
+Request Body
+
+```json
+{
+  "slot_number": 12,
+  "price": 50000,
+  "status": "TERSEDIA"
+}
+```
+
+Delete Slot (Admin):
+
+```http
+DELETE /api/v1/admin/slots/{slot_id}
 ```
 
 ````md id="b5v9c7"
@@ -138,19 +213,37 @@ Request Body
 
 ```json
 {
-  "slot_id": 1,
-  "booking_date": "2026-04-17"
+  "slot_id": 1
 }
 ```
 
-```json
 Response (Success)
+
+```json
 {
-"success": true,
-"booking_id": "fb-uuid-2026",
-"snap_token": "midtrans-snap-token-xyz",
-"redirect_url": "https://app.sandbox.midtrans.com/snap/v2/...",
-"valid_until": "2026-04-17T13:45:00Z"
+  "success": true,
+  "message": "Booking berhasil dibuat. Lapak terkunci selama 15 menit.",
+  "valid_until": "2026-04-20T17:30:00.000000Z",
+  "data": {
+    "id": 12,
+    "user_id": 5,
+    "slot_id": 1,
+    "status": "PENDING",
+    "booking_time": "2026-04-20T17:15:00.000000Z",
+    "expires_at": "2026-04-20T17:30:00.000000Z",
+    "created_at": "2026-04-20T17:15:00.000000Z",
+    "updated_at": "2026-04-20T17:15:00.000000Z"
+  }
+}
+```
+
+Jika slot masih di-hold user lain, API mengembalikan:
+
+```json
+{
+  "error": "SLOT_LOCKED",
+  "message": "Lapak sedang dalam proses pembayaran oleh user lain.",
+  "locked_until": "2026-04-20T17:30:00.000000Z"
 }
 ```
 

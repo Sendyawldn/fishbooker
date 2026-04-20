@@ -19,14 +19,14 @@ Tujuan: Meletakkan pondasi arsitektur dan kontrak data.
 
 - Seluruh dokumen `docs/` tersedia dan sinkron dengan struktur folder.
 
-## Fase 1 - Core Booking Engine (Current)
+## Fase 1 - Core Booking Engine (Done)
 
 Tujuan: Pipeline reservasi end-to-end tanpa integrasi eksternal.
 
-- [ ] CRUD Management untuk Slot (Admin).
-- [ ] Atomic Transactional Booking (Backend).
-- [ ] Interactive Denah Kolam (Frontend).
-- [ ] Integrasi Redis untuk temporary slot locking (15 menit).
+- [x] CRUD Management untuk Slot (Admin).
+- [x] Atomic Transactional Booking (Backend).
+- [x] Interactive Denah Kolam (Frontend).
+- [x] Integrasi Redis untuk temporary slot locking (15 menit).
 
 **Definition of Done:**
 

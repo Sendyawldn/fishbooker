@@ -1,0 +1,227 @@
+{
+  "cliVersion": "3.0.11",
+  "generatedAt": "2026-04-20T16:06:57.035Z",
+  "operationMode": "init",
+  "selectedProfile": "balanced",
+  "selectedProfilePack": null,
+  "selectedPreset": null,
+  "projectScope": {
+    "key": "both",
+    "label": "Both (frontend + backend)"
+  },
+  "selectedStack": "typescript.md",
+  "selectedAdditionalStacks": [],
+  "selectedBlueprint": "api-nextjs.md",
+  "selectedAdditionalBlueprints": [],
+  "ruleLoadingPolicy": {
+    "canonicalSource": ".instructions.md",
+    "stackLoadingMode": "lazy",
+    "loadedOnDemand": true,
+    "primaryStack": "typescript.md",
+    "additionalStacks": []
+  },
+  "ciGuardrailsEnabled": true,
+  "setupDurationMs": 17849,
+  "runtimeEnvironment": {
+    "selected": "linux-wsl",
+    "selectedLabel": "Linux / WSL",
+    "detected": "linux-wsl",
+    "detectedLabel": "Linux / WSL",
+    "detectionSource": "WSL environment markers"
+  },
+  "tokenOptimization": {
+    "enabled": true,
+    "selectedAgent": "copilot",
+    "preferredShellProxy": "native-fallback",
+    "stateFile": ".agent-context/state/token-optimization.json"
+  },
+  "memoryContinuity": {
+    "enabled": true,
+    "hydrationMode": "progressive-disclosure",
+    "adapters": [
+      "claude-code",
+      "gemini-cli",
+      "vscode-chat"
+    ],
+    "stateFile": ".agent-context/state/memory-continuity.json"
+  },
+  "architectRecommendation": {
+    "projectDescription": "A software project named fishbooker.",
+    "recommendedStackFileName": "typescript.md",
+    "recommendedBlueprintFileName": "api-nextjs.md",
+    "confidenceLabel": "low",
+    "confidenceScore": 0.35,
+    "rationaleSentences": [
+      "I recommend Typescript with Api Nextjs for this project.",
+      "The strongest evidence in your description is snapshot 0.32, combined with available repository signals.",
+      "Main trade-off: great fullstack velocity, but dependency churn and runtime startup need discipline.",
+      "Confidence is low, so review alternatives before finalizing architecture."
+    ],
+    "alternatives": [
+      {
+        "stackFileName": "python.md",
+        "blueprintFileName": "fastapi-service.md",
+        "oneLineTradeoff": "fast AI and API delivery, but strict latency targets may need extra optimization.",
+        "evidenceSummary": "keyword=0.00, detection=0.00, snapshot=0.32, realtime=0.00"
+      },
+      {
+        "stackFileName": "java.md",
+        "blueprintFileName": "spring-boot-api.md",
+        "oneLineTradeoff": "strong enterprise reliability, but setup and boilerplate are heavier.",
+        "evidenceSummary": "keyword=0.00, detection=0.00, snapshot=0.29, realtime=0.00"
+      }
+    ],
+    "uncertaintyNotes": [
+      "Realtime research gate is on, but no trusted realtime payload was available. Using deterministic snapshot baseline.",
+      "Low confidence: description did not map strongly to a single stack profile.",
+      "Data conflict: top stack candidates are close, so trade-offs need manual confirmation."
+    ],
+    "signalSummary": "snapshot 0.32",
+    "failureModes": {
+      "lowConfidence": true,
+      "dataConflict": true,
+      "repeatedOverride": false,
+      "realtimeGated": false,
+      "realtimeUnavailable": true
+    },
+    "research": {
+      "requestedMode": "realtime",
+      "effectiveMode": "snapshot",
+      "deterministic": true,
+      "snapshotId": "ecosystem-signals-2026-04-18",
+      "snapshotGeneratedAt": "2026-04-18T00:00:00.000Z",
+      "snapshotSourcePath": "/home/zen/.npm/_npx/27f567ec1750e5bf/node_modules/@ryuenn3123/agentic-senior-core/.agent-context/state/stack-research-snapshot.json",
+      "realtimeGateEnabled": true,
+      "realtimeSignalsLoaded": false,
+      "realtimeSignalSourcePath": null,
+      "trustedRealtimeSources": [
+        {
+          "sourceId": "awwwards-trend-feed",
+          "sourceName": "Awwwards Trend Feed",
+          "sourceUrl": "https://www.awwwards.com"
+        },
+        {
+          "sourceId": "github-ecosystem-signals",
+          "sourceName": "GitHub Ecosystem Signals",
+          "sourceUrl": "https://github.com"
+        }
+      ]
+    },
+    "evidenceCitations": [
+      {
+        "citationId": "snapshot:ecosystem-signals-2026-04-18:typescript.md",
+        "sourceType": "snapshot",
+        "sourceName": "Agentic-Senior-Core deterministic stack research snapshot",
+        "sourceUrl": "state://stack-research-snapshot/2026-04-18",
+        "measuredAt": "2026-04-18T00:00:00.000Z",
+        "stackFileName": "typescript.md",
+        "metrics": {
+          "ecosystemMaturity": 0.91,
+          "talentAvailability": 0.9,
+          "deliveryVelocity": 0.89
+        },
+        "note": "Deterministic stack research snapshot signal."
+      }
+    ],
+    "designGuidance": {
+      "generatedAt": "2026-04-18T00:00:00.000Z",
+      "normalizedSignals": {
+        "paletteRoles": [
+          "base",
+          "surface",
+          "accent"
+        ],
+        "typographyScale": "balanced",
+        "spacingPattern": "balanced-grid",
+        "motionCharacteristics": [
+          "subtle-enter",
+          "state-feedback"
+        ]
+      },
+      "sourcePolicy": {
+        "normalizedSignalsOnly": true,
+        "copiedExternalProse": false,
+        "blockedInputPacks": [
+          "DESIGN.md"
+        ]
+      }
+    },
+    "researchBudget": {
+      "tokenBudget": 900,
+      "timeoutMs": 1500,
+      "usedTokens": 129,
+      "elapsedMs": 3,
+      "tokenBudgetCapped": false,
+      "timeoutTriggered": false
+    },
+    "projectDomain": {
+      "key": "both",
+      "label": "Both (frontend + backend)"
+    },
+    "userVeto": {
+      "applied": false,
+      "selectedStackFileName": "typescript.md",
+      "selectedBlueprintFileName": "api-nextjs.md",
+      "source": "recommendation"
+    },
+    "appliedStackFileName": "typescript.md",
+    "appliedBlueprintFileName": "api-nextjs.md"
+  },
+  "autoDetection": {
+    "recommendedStack": null,
+    "recommendedAdditionalStacks": [],
+    "recommendedBlueprint": null,
+    "recommendedAdditionalBlueprints": [],
+    "confidenceLabel": null,
+    "confidenceScore": 0,
+    "confidenceGap": 0,
+    "detectionReasoning": "No known project markers were detected.",
+    "rankedCandidates": [],
+    "evidence": [],
+    "detectionTransparency": {
+      "declaredAt": "2026-04-20T16:06:39.199Z",
+      "declarationType": "existing-project",
+      "declarationShown": true,
+      "detectionSummary": "I did not find enough stack markers to auto-detect this project confidently.",
+      "activeRulesSummary": {
+        "canonicalSource": ".instructions.md",
+        "compiledEntrypoints": [
+          ".agent-instructions.md",
+          ".cursorrules",
+          ".windsurfrules",
+          ".clauderc",
+          ".gemini/instructions.md",
+          ".github/copilot-instructions.md"
+        ],
+        "stackLoadingMode": "lazy",
+        "selectedProfile": "balanced",
+        "selectedProfileDisplayName": "Balanced",
+        "blockingSeverities": [
+          "critical",
+          "high"
+        ],
+        "ciGuardrailsEnabled": true
+      },
+      "majorConstraints": [
+        "Preserve existing project markers and avoid forced stack migration.",
+        "Keep stack rule loading lazy and scoped to touched code.",
+        "Explicit stack or blueprint overrides always win over auto-detection."
+      ],
+      "quickConfirmation": {
+        "offered": false,
+        "response": "pending",
+        "source": "existing-project-detection"
+      },
+      "decision": {
+        "mode": "pending",
+        "selectedStackFileName": "typescript.md",
+        "selectedBlueprintFileName": "api-nextjs.md",
+        "selectedAdditionalStackFileNames": [],
+        "selectedAdditionalBlueprintFileNames": [],
+        "usedDetectedSetup": false,
+        "selectedProjectScopeKey": "both",
+        "selectedProjectScopeLabel": "Both (frontend + backend)"
+      }
+    }
+  }
+}

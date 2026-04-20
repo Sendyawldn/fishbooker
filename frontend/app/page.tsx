@@ -1,17 +1,16 @@
 import { getSlots } from "@/lib/api";
-import SlotCard from "@/components/SlotCard";
+import InteractivePondSection from "@/components/InteractivePondSection";
+import type { Slot } from "@/lib/api";
 import { Fish, MapPin, User, Waves } from "lucide-react"; // Import icons
 
 export default async function HomePage() {
-  let slots = [];
+  let slots: Slot[] = [];
   let availableCount = 0;
 
   try {
-    const response = await getSlots();
-    slots = response.data;
-    // Hitung berapa lapak yang statusnya TERSEDIA
-    availableCount = slots.filter((s: any) => s.status === "TERSEDIA").length;
-  } catch (e) {
+    slots = await getSlots();
+    availableCount = slots.filter((s) => s.status === "TERSEDIA").length;
+  } catch {
     return (
       <div className="min-h-screen flex items-center justify-center bg-rose-50 p-10">
         <div className="text-center p-8 bg-white rounded-3xl shadow-xl border border-rose-100">
@@ -104,7 +103,7 @@ export default async function HomePage() {
                 <p className="text-3xl font-black text-white">
                   {availableCount}
                 </p>
-                <p className="text-[10px] font-bold text-emerald-100 uppercase mt-1 text-emerald-900/50">
+                <p className="mt-1 text-[10px] font-bold uppercase text-emerald-100">
                   Tersedia
                 </p>
               </div>
@@ -120,7 +119,8 @@ export default async function HomePage() {
                 Peta Denah Kolam
               </h3>
               <p className="text-slate-500 text-sm font-medium">
-                Klik pada nomor lapak untuk melihat detail harga
+                Klik titik lapak di denah, lalu konfirmasi booking dari panel
+                detail
               </p>
             </div>
             <div className="flex gap-2">
@@ -130,14 +130,16 @@ export default async function HomePage() {
                   Ready
                 </span>
               </div>
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm">
+                <div className="w-2.5 h-2.5 bg-rose-500 rounded-full" />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                  Hold
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {slots.map((slot: any) => (
-              <SlotCard key={slot.id} slot={slot} />
-            ))}
-          </div>
+          <InteractivePondSection slots={slots} />
         </div>
       </section>
 

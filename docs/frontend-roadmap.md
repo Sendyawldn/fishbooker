@@ -52,9 +52,9 @@ Tujuan: Setup base project dan layout utama.
 
 Tujuan: Visualisasi ketersediaan lapak secara interaktif.
 
-- [ ] Map View: Denah kolam dengan status dinamis.
-- [ ] Slot Card: Komponen detail lapak dan harga.
-- [ ] Booking Modal: Alur konfirmasi pesanan yang seamless.
+- [x] Map View: Denah kolam dengan status dinamis.
+- [x] Slot Card: Komponen detail lapak dan harga.
+- [x] Booking Modal: Alur konfirmasi pesanan yang seamless.
 - **DoD**: Data dari API Laravel dapat divisualisasikan dengan benar.
 
 ### F-3: Admin & Analytics Dashboard
