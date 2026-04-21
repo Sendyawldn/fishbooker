@@ -12,6 +12,7 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/slots', [SlotController::class, 'index']);
+Route::middleware(['auth:sanctum'])->get('/bookings/me', [BookingController::class, 'index']);
 Route::middleware(['auth:sanctum'])->post('/bookings', [BookingController::class, 'store']);
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/admin/slots', [SlotController::class, 'store']);
@@ -22,6 +23,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::get('/slots', [SlotController::class, 'index']);
+    Route::middleware(['auth:sanctum'])->get('/bookings/me', [BookingController::class, 'index']);
     Route::middleware(['auth:sanctum'])->post('/bookings', [BookingController::class, 'store']);
 
     Route::middleware(['auth:sanctum', 'admin'])->group(function () {

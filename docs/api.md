@@ -1,112 +1,212 @@
-# FishBooker API Documentation
+# FishBooker API Guide
 
-## Overview
+Last reviewed: 2026-04-21
 
-FishBooker mengekspos logika bisnis reservasi, manajemen lapak, dan tata kelola keuangan melalui REST API yang dibangun di atas **Laravel 12**. API ini memungkinkan:
+## Scope
 
-- Sinkronisasi status lapak secara real-time untuk denah interaktif.
-- Eksekusi transaksi booking dengan integrasi Payment Gateway (Midtrans).
-- Pengambilan data statistik operasional untuk Admin Dashboard.
-- Automasi notifikasi status pembayaran via Webhooks.
-
----
+This document describes the API surface that is implemented in this repository today.
+It does not describe planned payment, reporting, webhook, or notification flows that do not exist in code yet.
 
 ## Source of Truth
 
-Untuk kontrak API terbaru (OpenAPI / Swagger), gunakan endpoint lokal saat server menyala:
+- Human-readable summary: `docs/api.md`
+- Machine-readable contract: `docs/openapi.yaml`
+- Runtime implementation: `backend/routes/api.php`
 
-- `http://localhost:8000/api/documentation` _(jika menggunakan L5-Swagger)_
+If the routes or payloads change, update `docs/openapi.yaml` in the same change.
 
-Dokumen ini berfungsi sebagai panduan operasional tambahan untuk pengembang Frontend.
+## Base URLs
 
----
+- Backend app: `http://localhost:8000`
+- Versioned API base: `http://localhost:8000/api/v1`
+- Compatibility API base: `http://localhost:8000/api`
 
-## Getting Started
+Both route groups exist today. New frontend work should prefer the versioned `/api/v1` paths.
 
-### Start the API Server (Docker Sail)
+## Authentication Model
 
-Development mode (Backend):
+The API uses Laravel Sanctum personal access tokens.
 
-```bash
-cd backend
-./vendor/bin/sail up -d
-```
+Login flow:
 
-Pastikan migrasi dan seeder sudah dijalankan untuk data awal:
+1. `POST /api/v1/auth/login`
+2. Read `access_token` from the response
+3. Send `Authorization: Bearer <token>` on protected requests
 
-```bash
-./vendor/bin/sail artisan migrate:fresh --seed
-```
+Protected endpoints:
 
-API akan tersedia di:
+- `GET /api/v1/bookings/me`
+- `POST /api/v1/bookings`
+- `POST /api/v1/admin/slots`
+- `PATCH /api/v1/admin/slots/{slot}`
+- `DELETE /api/v1/admin/slots/{slot}`
 
-```text
-http://localhost:8000/api
-```
+Admin endpoints also require the authenticated user role to be `ADMIN`.
 
-## API Endpoints
+## Implemented Endpoints
 
-### Authentication (Login)
+### Authentication
 
-```http
-POST /api/v1/auth/login
-```
+- `POST /api/v1/auth/login`
+- `POST /api/auth/login`
 
-Compatibility path yang juga tersedia:
-
-```http
-POST /api/auth/login
-```
-
-Menggunakan Laravel Sanctum. Token yang dihasilkan harus disertakan dalam header:
-
-```http
-Authorization: Bearer <token>
-```
+Request body:
 
 ```json
-Request Body
 {
-"email": "zen@fishbooker.id",
-"password": "password-rahasia"
+  "email": "test@example.com",
+  "password": "password"
 }
 ```
 
-Response
+Success response:
 
 ```json
 {
-  "access_token": "1|rahasia-jwt-token",
+  "access_token": "1|token-value",
   "token_type": "Bearer",
   "user": {
-    "name": "Sendi Awaludin",
-    "role": "admin"
+    "id": 1,
+    "name": "Test User",
+    "email": "test@example.com",
+    "role": "PELANGGAN"
   }
 }
 ```
 
-````md id="a1m7s5"
-### Admin Slot Management (Update Price / Status)
+### Public slot listing
+
+- `GET /api/v1/slots`
+- `GET /api/slots`
+
+Response shape:
+
+```json
+{
+  "success": true,
+  "message": "Daftar lapak berhasil diambil",
+  "data": [
+    {
+      "id": 1,
+      "slot_number": 1,
+      "status": "TERSEDIA",
+      "price": 50000,
+      "created_at": "2026-04-21T12:00:00.000000Z",
+      "updated_at": "2026-04-21T12:00:00.000000Z"
+    }
+  ]
+}
+```
+
+### Booking creation with 15-minute hold
+
+- `POST /api/v1/bookings`
+- `POST /api/bookings`
+
+Required headers:
 
 ```http
-PATCH /api/v1/admin/slots/{slot_id}
+Authorization: Bearer <token>
+Content-Type: application/json
 ```
-````
 
-Requires:
+Request body:
+
+```json
+{
+  "slot_id": 1
+}
+```
+
+Success response:
+
+```json
+{
+  "success": true,
+  "message": "Booking berhasil dibuat. Lapak terkunci selama 15 menit.",
+  "valid_until": "2026-04-21T12:15:00.000000Z",
+  "data": {
+    "id": 10,
+    "user_id": 2,
+    "slot_id": 1,
+    "booking_time": "2026-04-21T12:00:00.000000Z",
+    "expires_at": "2026-04-21T12:15:00.000000Z",
+    "status": "PENDING",
+    "created_at": "2026-04-21T12:00:00.000000Z",
+    "updated_at": "2026-04-21T12:00:00.000000Z"
+  }
+}
+```
+
+Important booking behaviors:
+
+- If another user still holds the slot, the API returns `422` with `error: SLOT_LOCKED`.
+- If the same user already holds the slot, the API returns `200` and reuses the active hold.
+- If an older pending booking for the slot is expired, the API cancels it and allows a new booking.
+- When a booking hold is created, the slot status changes from `TERSEDIA` to `DIBOOKING`.
+
+### Booking history for the authenticated user
+
+- `GET /api/v1/bookings/me`
+- `GET /api/bookings/me`
+
+Required headers:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-Requires Role: `ADMIN`
+Response shape:
 
-Endpoint ini dipakai admin untuk:
+```json
+{
+  "success": true,
+  "message": "Riwayat booking berhasil diambil.",
+  "data": [
+    {
+      "id": 10,
+      "user_id": 2,
+      "slot_id": 1,
+      "booking_time": "2026-04-21T12:00:00.000000Z",
+      "expires_at": "2026-04-21T12:15:00.000000Z",
+      "status": "PENDING",
+      "slot": {
+        "id": 1,
+        "slot_number": 1,
+        "status": "DIBOOKING",
+        "price": 50000,
+        "created_at": "2026-04-21T11:00:00.000000Z",
+        "updated_at": "2026-04-21T12:00:00.000000Z"
+      }
+    }
+  ]
+}
+```
 
-- mengubah harga lapak secara dinamis,
-- mengubah status lapak (`TERSEDIA`, `DIBOOKING`, `PERBAIKAN`).
+Booking history behavior:
 
-Request Body (minimal satu field wajib dikirim):
+- Response only contains bookings that belong to the authenticated user.
+- Expired `PENDING` bookings for the current user are normalized to `CANCELLED` when history is requested.
+- If an expired hold was the last active hold for a slot, the slot status is released back to `TERSEDIA`.
+
+### Admin slot management
+
+- `POST /api/v1/admin/slots`
+- `PATCH /api/v1/admin/slots/{slot}`
+- `DELETE /api/v1/admin/slots/{slot}`
+- Compatibility aliases also exist under `/api/admin/...`
+
+Create request:
+
+```json
+{
+  "slot_number": 11,
+  "price": 55000,
+  "status": "TERSEDIA"
+}
+```
+
+Update request:
 
 ```json
 {
@@ -115,226 +215,51 @@ Request Body (minimal satu field wajib dikirim):
 }
 ```
 
-Response (Success)
+Valid slot statuses:
 
-```json
-{
-  "success": true,
-  "message": "Lapak berhasil diperbarui",
-  "data": {
-    "id": 8,
-    "slot_number": 8,
-    "status": "PERBAIKAN",
-    "price": 75000,
-    "created_at": "2026-04-20T15:00:00.000000Z",
-    "updated_at": "2026-04-20T15:05:00.000000Z"
-  }
-}
-```
+- `TERSEDIA`
+- `DIBOOKING`
+- `PERBAIKAN`
 
-Create Slot (Admin):
+## Error Semantics
 
-```http
-POST /api/v1/admin/slots
-```
+Common error responses in the current implementation:
 
-Request Body
+- `401 Unauthorized`
+  - Invalid email or password on login
+  - Missing or invalid bearer token on protected endpoints
+- `403 Forbidden`
+  - Authenticated user is not an admin for admin routes
+- `422 Unprocessable Entity`
+  - Validation error
+  - Slot is locked by another booking hold
+  - Slot is not available
 
-```json
-{
-  "slot_number": 12,
-  "price": 50000,
-  "status": "TERSEDIA"
-}
-```
-
-Delete Slot (Admin):
-
-```http
-DELETE /api/v1/admin/slots/{slot_id}
-```
-
-````md id="b5v9c7"
-### Slot Discovery (Public)
-
-```http
-GET /api/v1/slots
-```
-````
-
-Mengambil semua status lapak terbaru untuk dirender ke dalam peta denah.
-
-Response
-
-```json
-[
-  {
-    "id": 1,
-    "slot_number": "A1",
-    "slug": "lapak-a1",
-    "price": 50000,
-    "status": "TERSEDIA",
-    "coordinates": {
-      "x": 12.5,
-      "y": 45.0
-    }
-  },
-  {
-    "id": 2,
-    "slot_number": "A2",
-    "slug": "lapak-a2",
-    "price": 50000,
-    "status": "DIBOOKING",
-    "coordinates": {
-      "x": 12.5,
-      "y": 55.0
-    }
-  }
-]
-```
-
-````md id="d2r6p8"
-### Create Booking Execution
-
-```http
-POST /api/v1/bookings
-```
-````
-
-Requires:
-
-```http
-Authorization: Bearer <token>
-```
-
-Endpoint ini melakukan atomic transaction: mengunci slot dan membuat order.
-
-Request Body
-
-```json
-{
-  "slot_id": 1
-}
-```
-
-Response (Success)
-
-```json
-{
-  "success": true,
-  "message": "Booking berhasil dibuat. Lapak terkunci selama 15 menit.",
-  "valid_until": "2026-04-20T17:30:00.000000Z",
-  "data": {
-    "id": 12,
-    "user_id": 5,
-    "slot_id": 1,
-    "status": "PENDING",
-    "booking_time": "2026-04-20T17:15:00.000000Z",
-    "expires_at": "2026-04-20T17:30:00.000000Z",
-    "created_at": "2026-04-20T17:15:00.000000Z",
-    "updated_at": "2026-04-20T17:15:00.000000Z"
-  }
-}
-```
-
-Jika slot masih di-hold user lain, API mengembalikan:
+Booking hold conflict example:
 
 ```json
 {
   "error": "SLOT_LOCKED",
   "message": "Lapak sedang dalam proses pembayaran oleh user lain.",
-  "locked_until": "2026-04-20T17:30:00.000000Z"
+  "locked_until": "2026-04-21T12:15:00.000000Z"
 }
 ```
 
-````md id="f9t1w3"
-### Admin Governance Summary
+## Out of Scope Today
 
-```http
-GET /api/v1/admin/governance/summary
-```
-````
+The following items are mentioned in older documents but are not implemented in this codebase yet:
 
-Requires Role: admin
+- Midtrans or any payment gateway integration
+- Payment webhooks
+- Financial journals and revenue reporting
+- Booking verification commands
+- Admin analytics dashboard API
+- Custom maintenance CLI commands for bookings or slots
 
-Mendapatkan ringkasan status tata kelola reservasi.
+## Related References
 
-Response
-
-```json
-{
-  "total_revenue": 1250000,
-  "occupancy_rate": "75%",
-  "pending_payments": 3,
-  "active_slots": 15,
-  "maintenance_slots": 2
-}
-```
-
-````md id="h4u7y2"
-### Payment Webhook (Midtrans)
-
-```http
-POST /api/v1/webhooks/payment/midtrans
-```
-````
-
-Endpoint asinkron yang menerima notifikasi dari Midtrans untuk update status database secara otomatis.
-
-Payload Example
-
-```json
-{
-  "order_id": "fb-uuid-2026",
-  "transaction_status": "settlement",
-  "payment_type": "qris",
-  "gross_amount": "50000.00"
-}
-```
-
-````md id="j6m2q9"
-## Error Handling
-
-Semua endpoint mengembalikan kode status HTTP yang sesuai:
-
-- `200 OK` → Operasi berhasil
-- `401 Unauthorized` → Token hilang atau tidak valid
-- `403 Forbidden` → User tidak memiliki role admin
-- `422 Unprocessable Entity` → Slot sudah dikunci / dibooking orang lain
-
-#### Contoh Error Response (Slot Conflict)
-
-```json
-{
-  "error": "SLOT_LOCKED",
-  "message": "Lapak A1 sedang dalam proses pembayaran oleh user lain.",
-  "locked_until": "2026-04-17T13:45:00Z"
-}
-```
-````
-
-````md id="k8n5r4"
-## Integration with Notification System
-
-Backend terintegrasi dengan WhatsApp Gateway (Fonnte / Wootalk) yang dipicu setelah status pembayaran `Paid`.
-
-```bash
-# Trigger manual pengecekan pembayaran expired via scheduler.
-./vendor/bin/sail artisan schedule:run
-```
-````
-
-````md id="p1z7x6"
-## Data Directories Structure
-
-Backend mengharapkan struktur direktori berikut untuk penyimpanan laporan:
-
-```text
-backend/
-├── storage/
-│   ├── app/
-│   │   ├── reports/     # Laporan Keuangan PDF
-│   │   ├── invoices/    # Bukti Booking Pelanggan
-│   │   └── logs/        # Audit Trail API
-```
-````
+- `docs/openapi.yaml`
+- `docs/architecture.md`
+- `docs/data-model.md`
+- `backend/tests/Feature/Api/BookingFlowTest.php`
+- `backend/tests/Feature/Api/AdminSlotManagementTest.php`

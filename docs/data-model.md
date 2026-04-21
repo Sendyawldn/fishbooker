@@ -1,161 +1,145 @@
-# Project FISHBOOKER - Data Model Draft
+# FishBooker Data Model
 
-## 1. Tujuan
+Last reviewed: 2026-04-21
 
-Dokumen ini mendefinisikan struktur data minimum untuk mendukung:
+## Scope
 
-- Audit transaksi reservasi dan validasi pembayaran.
-- Evaluasi tingkat okupansi lapak dan performa finansial.
-- Manajemen siklus hidup lapak (_maintenance_ & _dynamic pricing_).
-- Keamanan data pelanggan dan integritas role access.
+This document describes the database structures that are present in the Laravel migrations today.
+Older references to finance, analytics, and payment tables are product targets, not implemented schema.
 
----
+## Primary Application Tables
 
-## 2. Entitas PostgreSQL (atau MySQL)
+### `users`
 
-### 2.1 site_configurations
+Purpose: application users for auth and role checks.
 
-Menyimpan pengaturan aktif operasional kolam.
+Key columns:
 
-**Kolom utama:**
+- `id` bigint primary key
+- `name` string
+- `email` string unique
+- `email_verified_at` timestamp nullable
+- `password` string
+- `role` enum: `ADMIN`, `PELANGGAN`
+- `remember_token`
+- `created_at`, `updated_at`
 
-- `id` (uuid, pk)
-- `pool_name` (text)
-- `opening_hour` (time)
-- `closing_hour` (time)
-- `max_booking_per_user` (int)
-- `dynamic_pricing_enabled` (boolean)
-- `weekend_surcharge_percent` (numeric)
-- `updated_by` (text)
-- `updated_at` (timestamptz)
+Notes:
 
----
+- Role-based authorization for admin endpoints depends on `role`.
+- Seeder creates one default user with email `test@example.com`.
 
-### 2.2 slots
+### `slots`
 
-Snapshot status dan konfigurasi fisik lapak.
+Purpose: fish pond slot inventory and current availability state.
 
-**Kolom utama:**
+Key columns:
 
-- `id` (bigint, pk)
-- `slot_number` (text, unique)
-- `base_price` (numeric)
-- `current_price` (numeric) — hasil kalkulasi jika ada surcharge
-- `status` (text) — `TERSEDIA`, `DIBOOKING`, `PERBAIKAN`
-- `coordinates` (jsonb) — titik X, Y untuk UI Map
-- `last_maintenance_at` (timestamptz)
+- `id` bigint primary key
+- `slot_number` integer
+- `status` enum: `TERSEDIA`, `DIBOOKING`, `PERBAIKAN`
+- `price` integer
+- `created_at`, `updated_at`
 
----
+Notes:
 
-### 2.3 bookings
+- `slot_number` is not unique yet at the schema level.
+- Slot status is updated directly during booking and admin maintenance flows.
 
-Data inti reservasi dan lifecycle pesanan.
+### `bookings`
 
-**Kolom utama:**
+Purpose: booking holds and booking lifecycle records.
 
-- `id` (uuid, pk)
-- `user_id` (uuid, fk -> users.id)
-- `slot_id` (bigint, fk -> slots.id)
-- `booking_code` (text, unique)
-- `total_amount` (numeric)
-- `payment_status` (text) — `PENDING`, `PAID`, `EXPIRED`, `FAILED`
-- `snap_token` (text, null) — untuk integrasi Midtrans
-- `payment_method` (text, null)
-- `expires_at` (timestamptz) — deadline pembayaran
-- `created_at` (timestamptz)
+Key columns:
 
----
+- `id` bigint primary key
+- `user_id` foreign key to `users.id`
+- `slot_id` foreign key to `slots.id`
+- `booking_time` timestamp
+- `expires_at` timestamp nullable
+- `status` enum: `PENDING`, `SUCCESS`, `CANCELLED`
+- `created_at`, `updated_at`
 
-### 2.4 financial_journals
+Indexes:
 
-Audit trail pergerakan uang yang masuk ke sistem.
+- index on `expires_at`
+- composite index on `slot_id, status`
 
-**Kolom utama:**
+Notes:
 
-- `id` (bigint, pk)
-- `booking_id` (uuid, fk -> bookings.id)
-- `amount` (numeric)
-- `entry_type` (text) — `CREDIT` (Masuk), `DEBIT` (Refund)
-- `description` (text)
-- `reference_id` (text) — ID dari Payment Gateway
-- `created_at` (timestamptz)
+- Current code creates `PENDING` bookings only.
+- Expired pending holds are converted to `CANCELLED` during the next booking attempt for the same slot.
+- There is no separate payment record yet.
 
----
+## Authentication and Framework Tables
 
-### 2.5 user_activity_logs
+### `personal_access_tokens`
 
-Mencatat aktivitas kritikal untuk keamanan dan audit.
+Purpose: Sanctum token storage for API auth.
 
-**Kolom utama:**
+### `password_reset_tokens`
 
-- `id` (bigserial, pk)
-- `user_id` (uuid, fk -> users.id)
-- `action_type` (text) — `LOGIN`, `CREATE_BOOKING`, `CANCEL_BOOKING`, `CHANGE_PRICE`
-- `payload` (jsonb) — data detail perubahan
-- `ip_address` (text)
-- `created_at` (timestamptz)
+Purpose: password reset flow from Breeze.
 
----
+### `sessions`
 
-### 2.6 daily_summaries
+Purpose: Laravel session storage when session-backed flows are used.
 
-Output analisis harian untuk dashboard admin (_pre-aggregated data_).
+### `cache` and `cache_locks`
 
-**Kolom utama:**
+Purpose: cache storage and atomic lock support when the selected cache driver uses database tables.
 
-- `id` (uuid, pk)
-- `report_date` (date, unique)
-- `total_revenue` (numeric)
-- `total_bookings` (int)
-- `occupancy_rate` (numeric)
-- `most_booked_slot` (text)
-- `status` (text) — `FINALIZED`, `DRAFT`
+### `jobs`, `job_batches`, `failed_jobs`
 
----
+Purpose: queue support and failed job tracking.
 
-## 3. Redis Keys (Draft)
+## Relationships
 
-- `fishbooker:slot_lock:{slot_id}` → Mengunci slot saat checkout (TTL 15 menit)
-- `fishbooker:session:{user_id}` → Token auth session
-- `fishbooker:stats:daily_temp` → Counter pendapatan sementara hari ini
-- `fishbooker:active_users` → Set user yang sedang online di denah
+```mermaid
+erDiagram
+    USERS ||--o{ BOOKINGS : creates
+    SLOTS ||--o{ BOOKINGS : reserves
 
----
+    USERS {
+      bigint id PK
+      string email
+      string role
+    }
 
-## 4. Indexing Guidance
+    SLOTS {
+      bigint id PK
+      int slot_number
+      enum status
+      int price
+    }
 
-- `bookings(user_id, payment_status)`
-- `bookings(booking_code)`
-- `slots(status, current_price)`
-- `financial_journals(created_at desc)`
-- `user_activity_logs(user_id, action_type)`
+    BOOKINGS {
+      bigint id PK
+      bigint user_id FK
+      bigint slot_id FK
+      timestamp booking_time
+      timestamp expires_at
+      enum status
+    }
+```
 
----
+## Seed Data
 
-## 5. Audit and Traceability
+Current seeders create:
 
-Setiap record finansial dan perubahan status wajib memiliki:
+- one default user from `DatabaseSeeder`
+- five example slots from `SlotSeeder`
 
-- `correlation_id` → tracking log dari request frontend ke database
-- `admin_ref` → jika perubahan dilakukan manual oleh admin
-- `version_snapshot` → keadaan data sebelum diubah
+The seeded slots intentionally include mixed statuses so the frontend can show available, held, and maintenance states.
 
----
+## Not Implemented Yet
 
-## Analisis Upgrade
+The following entities appear in older planning documents but do not exist in migrations today:
 
-### Financial Journals
+- `financial_journals`
+- `daily_summaries`
+- `user_activity_logs`
+- payment gateway reference tables
+- site configuration tables
 
-Kita pisahkan dari tabel booking agar setiap pergerakan uang (termasuk refund atau diskon manual) punya jejak audit yang bersih.
-
-### Site Configurations
-
-Admin bisa mengatur **Global Rules** kolam tanpa perlu menyentuh file `.env`.
-
-### Activity Logs
-
-Penting untuk mengetahui siapa yang mengubah harga lapak atau siapa yang membatalkan booking.
-
-### UUID vs BigInt
-
-Menggunakan UUID untuk entitas yang terekspos ke publik (`bookings`, `users`) dan BigInt untuk data internal (`slots`) demi performa
+If those features are added later, update this document and the migrations in the same change.

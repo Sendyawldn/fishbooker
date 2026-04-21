@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Fish, MapPin, ShieldCheck, User, UserCheck } from "lucide-react";
 import { ApiError, login } from "@/lib/api";
@@ -92,21 +93,27 @@ export default function AuthHeader() {
         </div>
 
         <div className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
-          <a href="#" className="transition-colors hover:text-emerald-600">
+          <Link href="/#pond-map" className="transition-colors hover:text-emerald-600">
             Denah Kolam
-          </a>
+          </Link>
           {isAdmin ? (
-            <a href="#" className="transition-colors hover:text-emerald-600">
+            <Link
+              href="/admin/slots"
+              className="transition-colors hover:text-emerald-600"
+            >
               Kelola Slot
-            </a>
+            </Link>
           ) : (
-            <a href="#" className="transition-colors hover:text-emerald-600">
+            <Link
+              href="/bookings"
+              className="transition-colors hover:text-emerald-600"
+            >
               Riwayat Booking
-            </a>
+            </Link>
           )}
-          <a href="#" className="transition-colors hover:text-emerald-600">
+          <Link href="/#bantuan" className="transition-colors hover:text-emerald-600">
             Bantuan
-          </a>
+          </Link>
         </div>
 
         {session ? (

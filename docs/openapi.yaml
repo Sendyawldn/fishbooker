@@ -1,0 +1,772 @@
+openapi: 3.1.0
+info:
+  title: FishBooker API
+  version: 0.1.0
+  description: >
+    OpenAPI contract for the API routes that are implemented in this repository
+    as of 2026-04-21.
+servers:
+  - url: http://localhost:8000
+    description: Local backend root
+tags:
+  - name: Auth
+  - name: Slots
+  - name: Bookings
+  - name: Admin Slots
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in and create a Sanctum token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              default:
+                value:
+                  email: test@example.com
+                  password: password
+      responses:
+        '200':
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Email or password is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              examples:
+                invalid_credentials:
+                  value:
+                    message: Email atau password tidak valid.
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Compatibility alias for versioned login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: Email or password is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/slots:
+    get:
+      tags: [Slots]
+      summary: List all slots
+      responses:
+        '200':
+          description: Slot list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotListResponse'
+  /api/slots:
+    get:
+      tags: [Slots]
+      summary: Compatibility alias for versioned slot list
+      responses:
+        '200':
+          description: Slot list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotListResponse'
+  /api/v1/bookings:
+    post:
+      tags: [Bookings]
+      summary: Create a booking hold for a slot
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+            examples:
+              default:
+                value:
+                  slot_id: 1
+      responses:
+        '200':
+          description: Active hold already belongs to the same user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '201':
+          description: Booking hold created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation failed or slot cannot be booked
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationErrorResponse'
+                  - $ref: '#/components/schemas/SlotLockedResponse'
+                  - $ref: '#/components/schemas/SlotUnavailableResponse'
+  /api/v1/bookings/me:
+    get:
+      tags: [Bookings]
+      summary: List bookings for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Booking history returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingHistoryResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/bookings:
+    post:
+      tags: [Bookings]
+      summary: Compatibility alias for versioned booking creation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '200':
+          description: Active hold already belongs to the same user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '201':
+          description: Booking hold created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation failed or slot cannot be booked
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationErrorResponse'
+                  - $ref: '#/components/schemas/SlotLockedResponse'
+                  - $ref: '#/components/schemas/SlotUnavailableResponse'
+  /api/bookings/me:
+    get:
+      tags: [Bookings]
+      summary: Compatibility alias for versioned booking history
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Booking history returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingHistoryResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/admin/slots:
+    post:
+      tags: [Admin Slots]
+      summary: Create a slot
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSlotRequest'
+            examples:
+              default:
+                value:
+                  slot_number: 11
+                  price: 55000
+                  status: TERSEDIA
+      responses:
+        '201':
+          description: Slot created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotMutationResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+  /api/v1/admin/slots/{slot}:
+    patch:
+      tags: [Admin Slots]
+      summary: Update a slot price or status
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SlotId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSlotRequest'
+            examples:
+              default:
+                value:
+                  price: 75000
+                  status: PERBAIKAN
+      responses:
+        '200':
+          description: Slot updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotMutationResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+    delete:
+      tags: [Admin Slots]
+      summary: Delete a slot
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SlotId'
+      responses:
+        '200':
+          description: Slot deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/admin/slots:
+    post:
+      tags: [Admin Slots]
+      summary: Compatibility alias for versioned slot creation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSlotRequest'
+      responses:
+        '201':
+          description: Slot created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotMutationResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+  /api/admin/slots/{slot}:
+    patch:
+      tags: [Admin Slots]
+      summary: Compatibility alias for versioned slot update
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SlotId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSlotRequest'
+      responses:
+        '200':
+          description: Slot updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotMutationResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+    delete:
+      tags: [Admin Slots]
+      summary: Compatibility alias for versioned slot delete
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SlotId'
+      responses:
+        '200':
+          description: Slot deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+  parameters:
+    SlotId:
+      name: slot
+      in: path
+      required: true
+      description: Slot primary key
+      schema:
+        type: integer
+        example: 1
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: test@example.com
+        password:
+          type: string
+          description: User password
+          example: password
+    UserSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, role]
+      properties:
+        id:
+          type: integer
+          description: User primary key
+          example: 1
+        name:
+          type: string
+          description: User display name
+          example: Test User
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: test@example.com
+        role:
+          type: string
+          description: User role used by admin guard
+          enum: [ADMIN, PELANGGAN]
+          example: PELANGGAN
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+          description: Sanctum personal access token
+          example: 1|example-token
+        token_type:
+          type: string
+          description: Token type to send in the Authorization header
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/UserSummary'
+    Slot:
+      type: object
+      additionalProperties: false
+      required: [id, slot_number, status, price, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          description: Slot primary key
+          example: 1
+        slot_number:
+          type: integer
+          description: Human-visible slot number
+          example: 11
+        status:
+          type: string
+          description: Slot availability status
+          enum: [TERSEDIA, DIBOOKING, PERBAIKAN]
+          example: TERSEDIA
+        price:
+          type: integer
+          description: Slot price in whole rupiah
+          example: 55000
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: '2026-04-21T12:00:00.000000Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: '2026-04-21T12:00:00.000000Z'
+    Booking:
+      type: object
+      additionalProperties: false
+      required:
+        [id, user_id, slot_id, booking_time, expires_at, status, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          description: Booking primary key
+          example: 10
+        user_id:
+          type: integer
+          description: Booking owner user id
+          example: 2
+        slot_id:
+          type: integer
+          description: Reserved slot id
+          example: 1
+        booking_time:
+          type: string
+          format: date-time
+          description: Time the booking row was created
+          example: '2026-04-21T12:00:00.000000Z'
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Hold expiry timestamp
+          example: '2026-04-21T12:15:00.000000Z'
+        status:
+          type: string
+          description: Current booking status
+          enum: [PENDING, SUCCESS, CANCELLED]
+          example: PENDING
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: '2026-04-21T12:00:00.000000Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: '2026-04-21T12:00:00.000000Z'
+    SlotListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          description: Success flag
+          example: true
+        message:
+          type: string
+          description: Human-readable result message
+          example: Daftar lapak berhasil diambil
+        data:
+          type: array
+          description: Slot collection
+          items:
+            $ref: '#/components/schemas/Slot'
+    CreateBookingRequest:
+      type: object
+      additionalProperties: false
+      required: [slot_id]
+      properties:
+        slot_id:
+          type: integer
+          description: Slot id to hold
+          example: 1
+    BookingResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          description: Success flag
+          example: true
+        message:
+          type: string
+          description: Human-readable booking result
+          example: Booking berhasil dibuat. Lapak terkunci selama 15 menit.
+        valid_until:
+          type: string
+          format: date-time
+          description: Hold expiry returned to the client
+          example: '2026-04-21T12:15:00.000000Z'
+        data:
+          $ref: '#/components/schemas/Booking'
+    BookingWithSlot:
+      allOf:
+        - $ref: '#/components/schemas/Booking'
+        - type: object
+          additionalProperties: false
+          required: [slot]
+          properties:
+            slot:
+              $ref: '#/components/schemas/Slot'
+    BookingHistoryResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          description: Success flag
+          example: true
+        message:
+          type: string
+          description: Human-readable booking history result
+          example: Riwayat booking berhasil diambil.
+        data:
+          type: array
+          description: Authenticated user's bookings
+          items:
+            $ref: '#/components/schemas/BookingWithSlot'
+    CreateSlotRequest:
+      type: object
+      additionalProperties: false
+      required: [slot_number, price]
+      properties:
+        slot_number:
+          type: integer
+          description: Human-visible slot number
+          example: 11
+        price:
+          type: integer
+          description: Slot price in whole rupiah
+          example: 55000
+        status:
+          type: string
+          description: Optional slot status, defaults to TERSEDIA
+          enum: [TERSEDIA, DIBOOKING, PERBAIKAN]
+          example: TERSEDIA
+    UpdateSlotRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        price:
+          type: integer
+          minimum: 0
+          description: New slot price in whole rupiah
+          example: 75000
+        status:
+          type: string
+          description: New slot status
+          enum: [TERSEDIA, DIBOOKING, PERBAIKAN]
+          example: PERBAIKAN
+      description: At least one of price or status must be provided.
+      minProperties: 1
+    SlotMutationResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          description: Success flag
+          example: true
+        message:
+          type: string
+          description: Human-readable mutation result
+          example: Lapak berhasil diperbarui
+        data:
+          $ref: '#/components/schemas/Slot'
+    DeleteResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          description: Success flag
+          example: true
+        message:
+          type: string
+          description: Human-readable deletion result
+          example: Lapak berhasil dihapus
+    MessageResponse:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: Human-readable message
+          example: Unauthorized.
+    SlotLockedResponse:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Stable conflict code
+          example: SLOT_LOCKED
+        message:
+          type: string
+          description: Human-readable lock conflict message
+          example: Lapak sedang dalam proses pembayaran oleh user lain.
+        locked_until:
+          type: string
+          format: date-time
+          description: Time when the active lock is expected to expire
+          example: '2026-04-21T12:15:00.000000Z'
+    SlotUnavailableResponse:
+      type: object
+      additionalProperties: false
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Stable unavailable code
+          example: SLOT_UNAVAILABLE
+        message:
+          type: string
+          description: Human-readable unavailability message
+          example: Lapak tidak tersedia.
+    ValidationErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+          description: Validation failure summary
+          example: The given data was invalid.
+        errors:
+          type: object
+          description: Field-level validation errors
+          additionalProperties:
+            type: array
+            items:
+              type: string

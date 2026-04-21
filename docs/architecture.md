@@ -1,165 +1,177 @@
-# Project FISHBOOKER - Architecture Blueprint
+# FishBooker Architecture
 
-## 1. Tujuan Sistem
+Last reviewed: 2026-04-21
 
-**FISHBOOKER** adalah platform manajemen operasional dan reservasi pemancingan terpadu yang bertujuan untuk:
+## System Summary
 
-- **Efisien**: Menghilangkan risiko _double booking_ melalui sistem **Real-time Slot Locking**.
-- **Transparan**: Memberikan laporan keuangan otomatis dan akurat bagi pemilik kolam.
-- **Modern**: Memberikan pengalaman pengguna yang responsif dengan integrasi peta lapak interaktif.
+FishBooker is a monorepo with two runtime applications:
 
----
+- `backend/`: Laravel 13 API
+- `frontend/`: Next.js 16 application
 
-## 2. Prinsip Desain
+The current product is an MVP for slot discovery, token-based login, admin slot management, and booking holds that prevent double booking for 15 minutes.
 
-- **Real-time First**  
-  Status lapak harus selalu sinkron antara admin dan pelanggan.
-
-- **Transaction Integrity**  
-  Data reservasi dan log keuangan harus diproses dalam satu transaksi database (_atomicity_).
-
-- **Mobile Optimized**  
-  UI harus ringan dan mudah digunakan oleh pemancing di lapangan via smartphone.
-
-- **Scalable Infrastructure**  
-  Memisahkan backend API dan frontend untuk kemudahan pengembangan di masa depan.
-
----
-
-## 3. Arsitektur Tingkat Tinggi
+## Current Architecture
 
 ```mermaid
-    flowchart TD
+flowchart LR
+    Browser[Browser]
+    Frontend[Next.js 16 frontend]
+    Backend[Laravel 13 API]
+    MySQL[(MySQL)]
+    Cache[(Laravel cache lock)]
+    Redis[(Redis service in Sail)]
 
-    subgraph Client_Layer
-    A[Customer Next.js App] --> B[API Gateway / Sanctum]
-    C[Admin Next.js Dashboard] --> B
-    end
-
-    subgraph Backend_Logic_Laravel_12
-    B --> D[Slot Engine: Availability Logic]
-    B --> E[Booking Engine: Transaction Logic]
-    B --> F[Finance Module: Reporting & Logs]
-
-    D --> G{Validation Guard}
-    E --> G
-    end
-
-    subgraph Data_Persistence
-    G --> H[(MySQL: Core Tables)]
-    D --> I[(Redis: Real-time Slot Lock)]
-    end
-
-    subgraph Integration_Layer
-    E --> J[Payment Gateway: Midtrans]
-    E --> K[Notification: WhatsApp API]
-    end
+    Browser --> Frontend
+    Frontend -->|HTTP JSON| Backend
+    Backend --> MySQL
+    Backend --> Cache
+    Redis -. available in local stack .-> Cache
 ```
 
-## 4. Komponen Utama
+## Backend Modules in Code
 
-### 4.1 Slot Engine (Filter 1 - Availability)
+### Authentication
 
-**Tugas:**
+- Login endpoint returns a Sanctum token
+- Admin authorization is enforced by `EnsureUserIsAdmin`
+- Breeze web auth routes also exist for registration, password reset, and logout
 
-- Memvalidasi ketersediaan lapak berdasarkan tanggal dan sesi.
-- Mengelola state lapak:
-  - `TERSEDIA`
-  - `DIBOOKING` (sementara)
-  - `TERISI`
-- _Locking mechanism_: Mengunci nomor lapak selama proses checkout agar tidak diambil user lain.
+Key files:
 
----
+- `backend/app/Http/Controllers/Api/AuthController.php`
+- `backend/app/Http/Middleware/EnsureUserIsAdmin.php`
+- `backend/routes/api.php`
+- `backend/routes/auth.php`
 
-### 4.2 Booking Engine (Filter 2 - Transaction)
+### Slot management
 
-**Tugas:**
+- Public slot list endpoint
+- Admin slot create, update, and delete endpoints
+- Slot status enum is currently stored in the `slots` table
 
-- Membuat entri reservasi unik dengan UUID.
-- Menghitung total biaya berdasarkan durasi atau tipe lapak.
-- Mengatur deadline pembayaran.
+Key files:
 
----
+- `backend/app/Http/Controllers/Api/SlotController.php`
+- `backend/app/Http/Requests/Api/StoreSlotRequest.php`
+- `backend/app/Http/Requests/Api/UpdateSlotRequest.php`
+- `backend/app/Models/Slot.php`
 
-### 4.3 Financial Module (The Accountant)
+### Booking flow
 
-**Tugas:**
+- Authenticated booking creation
+- Authenticated booking history lookup
+- Atomic row lock on the selected slot with `lockForUpdate()`
+- Application-level hold using `Cache::lock(...)`
+- Automatic cancellation of expired pending holds for the same slot
 
-- Mencatat setiap dana masuk secara otomatis ke tabel `financial_logs`.
-- Menghasilkan rekapitulasi harian untuk admin:
-  - total omzet
-  - jumlah booking
-- Validasi status pembayaran dari Payment Gateway.
+Key files:
 
----
+- `backend/app/Http/Controllers/Api/BookingController.php`
+- `backend/app/Http/Requests/Api/StoreBookingRequest.php`
+- `backend/app/Models/Booking.php`
 
-## 5. Booking Lifecycle State Machine
+## Frontend Modules in Code
 
-```mermaid
-    stateDiagram-v2
+The frontend currently ships one public page that combines discovery, login, and booking.
+It also ships one admin route for slot operations and one authenticated user booking history route.
 
-    [*] --> Viewing: Browser Lapak
-    Viewing --> Selecting: Pilih Nomor Lapak
-    Selecting --> PendingPayment: Checkout (Slot dikunci 15 menit)
+Implemented UI pieces:
 
-    PendingPayment --> Paid: Pembayaran Sukses (Webhook)
-    PendingPayment --> Expired: Melewati Batas Waktu
+- `frontend/app/page.tsx`: homepage and data fetch
+- `frontend/app/admin/slots/page.tsx`: admin slot route entry
+- `frontend/app/bookings/page.tsx`: authenticated booking history route entry
+- `frontend/components/AuthHeader.tsx`: login dialog and session display
+- `frontend/components/InteractivePondSection.tsx`: slot selection shell
+- `frontend/components/PondMap.tsx`: clickable slot map
+- `frontend/components/SlotCard.tsx`: slot detail and booking modal
+- `frontend/features/admin-slots/api/adminSlotsApi.ts`: admin API adapter
+- `frontend/features/admin-slots/components/AdminSlotsPageClient.tsx`: admin container
+- `frontend/features/admin-slots/components/AdminSlotFormDialog.tsx`: create and edit dialog
+- `frontend/features/bookings/components/BookingHistoryPageClient.tsx`: booking history container
+- `frontend/lib/api.ts`: API client for slots, login, and booking
+- `frontend/lib/auth-session.ts`: client session and cookie persistence
+- `frontend/lib/auth-server.ts`: server-side cookie reader for route gating
+- `frontend/proxy.ts`: request-time route protection for admin and booking pages
 
-    Paid --> Confirmed: Validasi Admin / QR Scan
-    Confirmed --> Completed: Selesai Memancing
+Analytics, payment, and broader booking operations are still missing.
 
-    Expired --> Viewing: Slot Kembali Tersedia
-    Completed --> [*]
-```
+## Runtime Flow
 
-## 6. Risk Management Layer
+### Read slots
 
-### Concurrent Booking Protection
+1. Next.js calls `GET /api/v1/slots`
+2. Laravel returns all slot rows
+3. Frontend renders map and detail card
 
-Menggunakan Redis / Database Lock untuk mencegah _race condition_ pada satu nomor lapak.
+### Login
 
-### Payment Verification
+1. User opens the login dialog
+2. Frontend calls `POST /api/v1/auth/login`
+3. Sanctum token is stored in `sessionStorage`
+4. Subsequent booking requests send the bearer token
 
-Hanya mengubah status menjadi `Paid` melalui verifikasi Webhook resmi dari Payment Gateway, bukan dari client-side.
+### Create booking hold
 
-### Auto-Release System
+1. User confirms a slot booking
+2. Frontend calls `POST /api/v1/bookings`
+3. Backend acquires a short cache lock for the slot
+4. Backend opens a database transaction and locks the slot row
+5. Backend cancels expired pending holds for the same slot
+6. If an active hold exists for another user, the request fails with `SLOT_LOCKED`
+7. Otherwise a new `PENDING` booking is created with `expires_at = now + 15 minutes`
+8. Slot status is updated to `DIBOOKING`
 
-Job scheduler untuk otomatis membatalkan pesanan yang tidak dibayar tepat waktu.
+### Manage slots from admin UI
 
----
+1. Admin opens `/admin/slots`
+2. Frontend reads the stored session and checks for role `ADMIN`
+3. Frontend reads slot inventory from `GET /api/v1/slots`
+4. Create, update, and delete actions call the admin API endpoints with the bearer token
+5. Backend remains the final authority through Sanctum auth and admin middleware
 
-## 7. Data and Storage Strategy
+### View booking history
 
-### PostgreSQL / MySQL
+1. Logged-in user opens `/bookings`
+2. Next.js checks the cookie-backed auth session in `proxy.ts` and again in the server route
+3. Frontend calls `GET /api/v1/bookings/me`
+4. Backend returns only bookings owned by the authenticated user, including slot details
+5. Expired pending bookings for that user are normalized to `CANCELLED`
 
-Sebagai **source of truth** untuk :
+## State Model in Code
 
-- data user
-- nomor lapak
-- riwayat booking
-- jurnal keuangan
+### Slot status
 
-### Redis
+- `TERSEDIA`
+- `DIBOOKING`
+- `PERBAIKAN`
 
-Digunakan untuk :
+### Booking status
 
-- cache status lapak
-- performa akses cepat
-- temporary locking saat checkout
+- `PENDING`
+- `SUCCESS`
+- `CANCELLED`
 
----
+`SUCCESS` exists at the schema level but there is no payment or completion flow that sets it yet.
 
-## 8. Deployment Topology (MVP)
+## Health and Operations
 
-- **Frontend**: Vercel (Next.js 15)
-- **Backend API**: Cloud Run / VPS (Laravel 12 + Docker Sail)
-- **Database**: Managed SQL Service
+- Laravel health endpoint: `GET /up`
+- Local infrastructure: Sail app, MySQL, Redis, Mailpit
+- Automated domain-specific scheduler or booking cleanup command is not implemented yet
 
----
+## Known Gaps Between Architecture Intent and Code
 
-## 9. Definition of Done (Phase 1)
+These items are planned or referenced elsewhere, but not implemented today:
 
-- User bisa melihat denah lapak secara real-time.
-- Sistem berhasil mengunci lapak saat masuk halaman pembayaran.
-- Admin bisa melihat total pendapatan harian di dashboard.
-- Notifikasi WhatsApp terkirim otomatis saat status berubah menjadi `Paid`.
+- Payment gateway integration
+- Webhook processing
+- Financial journal tables
+- Reporting pipeline
+- Admin analytics dashboard
+- Dedicated service and repository layers for booking and slot domains
+
+## Design Decision
+
+FishBooker currently behaves as a modular monolith split into a Laravel API and a Next.js client.
+This matches the accepted direction in `docs/architecture-decision-record.md`, but the code is still in an early stage and has not fully separated controller and service responsibilities yet.

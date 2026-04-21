@@ -1,4 +1,4 @@
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 export type SlotStatus = "TERSEDIA" | "DIBOOKING" | "PERBAIKAN";
@@ -23,6 +23,10 @@ export interface Booking {
   updated_at?: string;
 }
 
+export interface BookingWithSlot extends Booking {
+  slot: Slot;
+}
+
 export interface LoginResponse {
   access_token: string;
   token_type: string;
@@ -41,6 +45,23 @@ export interface BookingResponse {
   data: Booking;
 }
 
+export interface BookingListResponse {
+  success: boolean;
+  message: string;
+  data: BookingWithSlot[];
+}
+
+export interface SlotMutationResponse {
+  success: boolean;
+  message: string;
+  data: Slot;
+}
+
+export interface DeleteResponse {
+  success: boolean;
+  message: string;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly payload: unknown;
@@ -53,7 +74,7 @@ export class ApiError extends Error {
   }
 }
 
-async function requestJson<T>(
+export async function requestJson<T>(
   endpoint: string,
   init?: RequestInit,
 ): Promise<T> {
@@ -119,4 +140,15 @@ export async function createBooking(
     },
     body: JSON.stringify({ slot_id: slotId }),
   });
+}
+
+export async function getMyBookings(token: string): Promise<BookingWithSlot[]> {
+  const result = await requestJson<BookingListResponse>("/api/v1/bookings/me", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  return result.data;
 }

@@ -1,42 +1,9 @@
-# 🎣 FISHBOOKER
+# FishBooker
 
-**FISHBOOKER** adalah platform manajemen operasional dan reservasi pemancingan terpadu yang dirancang untuk menghilangkan risiko double booking dan memberikan pengalaman pengguna yang modern.
+FishBooker is a fish pond slot booking project built as a monorepo with a Laravel API and a Next.js frontend.
+The current repository delivers an MVP for slot discovery, login, admin slot management at the API level, and booking holds that prevent double booking for 15 minutes.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Status](https://img.shields.io/badge/status-active-brightgreen.svg)
-
-## 📌 Tentang Proyek
-
-FISHBOOKER adalah solusi lengkap untuk mengelola operasional kolam pemancingan dengan fitur-fitur unggulan:
-
-### ✨ Fitur Utama
-
-- **Real-time Slot Locking** - Mencegah double booking dengan sinkronisasi real-time
-- **Manajemen Reservasi** - Sistem booking yang mudah dan intuitif
-- **Laporan Keuangan Otomatis** - Transparansi keuangan untuk pemilik kolam
-- **Dashboard Admin** - Monitoring operasional yang komprehensif
-- **Integrasi Peta Interaktif** - Visualisasi lokasi lapak pemancingan
-- **Manajemen Pengguna** - Sistem autentikasi dan otorisasi yang aman
-
-## 🏗️ Arsitektur Proyek
-
-Proyek ini menggunakan arsitektur **monorepo** dengan dua bagian utama:
-
-````
-fishbooker/
-# FISHBOOKER
-
-FishBooker adalah aplikasi reservasi lapak pemancingan dengan fokus pada pencegahan double booking melalui mekanisme lock slot dan hold expiry.
-
-## Ringkasan
-
-Project ini berjalan sebagai monorepo dengan tiga area utama:
-
-- backend: API Laravel untuk auth, slot management, dan booking flow
-- frontend: UI Next.js untuk denah interaktif dan alur booking
-- docs: dokumentasi teknis, arsitektur, API, roadmap
-
-## Struktur Repository
+## Repository Structure
 
 ```text
 fishbooker/
@@ -44,7 +11,7 @@ fishbooker/
 |- frontend/
 |- docs/
 |- README.md
-````
+```
 
 ## Tech Stack
 
@@ -53,35 +20,38 @@ Backend:
 - PHP 8.3+
 - Laravel 13
 - Laravel Sanctum
-- MySQL (via Laravel Sail)
-- Redis (via Laravel Sail)
+- MySQL 8.4 through Laravel Sail
+- Redis through Laravel Sail
 
 Frontend:
 
 - Next.js 16
 - React 19
 - TypeScript
-- Tailwind CSS
+- Tailwind CSS 4
+- Radix UI and shadcn UI primitives
 
-## Fitur yang Sudah Tersedia
+## Implemented Features
 
-- Login API berbasis Sanctum token
-- Public slot discovery
-- Admin slot CRUD (create, update, delete)
-- Booking flow dengan lock proses dan hold 15 menit
-- Penolakan booking bila slot masih di-hold user lain
-- Denah lapak interaktif di frontend
+- Sanctum token login endpoint
+- public slot listing
+- admin slot create, update, and delete API
+- admin slot management page in the frontend
+- user booking history API and frontend page
+- frontend route protection using cookie-backed session and `proxy.ts`
+- booking hold flow with expiry recovery
+- interactive frontend map and booking modal
 
-## Quick Start
+## Planned but Not Implemented Yet
 
-### 1. Clone
+- payment gateway integration
+- payment webhooks
+- finance and reporting modules
+- admin dashboard frontend
 
-```bash
-git clone https://github.com/Sendyawldn/fishbooker.git
-cd fishbooker
-```
+## Local Development
 
-### 2. Setup Backend
+Backend:
 
 ```bash
 cd backend
@@ -92,98 +62,27 @@ cp .env.example .env
 ./vendor/bin/sail artisan migrate:fresh --seed
 ```
 
-Backend API default di:
-
-```text
-http://localhost:8000
-```
-
-### 3. Setup Frontend
-
-```bash
-cd ../frontend
-npm install
-npm run dev
-```
-
-Frontend default di:
-
-```text
-http://localhost:3000
-```
-
-## Environment Variables
-
-Frontend membaca variabel ini:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-NEXT_PUBLIC_DEMO_EMAIL=test@example.com
-NEXT_PUBLIC_DEMO_PASSWORD=password
-```
-
-Catatan:
-
-- Jika NEXT_PUBLIC_API_BASE_URL tidak diisi, frontend akan fallback ke http://localhost:8000.
-- Endpoint yang dipanggil frontend saat ini menggunakan prefix /api/v1.
-
-## Endpoint Penting
-
-Auth:
-
-- POST /api/v1/auth/login
-
-Slot:
-
-- GET /api/v1/slots
-- POST /api/v1/admin/slots (admin)
-- PATCH /api/v1/admin/slots/{slot_id} (admin)
-- DELETE /api/v1/admin/slots/{slot_id} (admin)
-
-Booking:
-
-- POST /api/v1/bookings (auth required)
-
-Detail contract response ada di dokumentasi API.
-
-## Menjalankan Test
-
-Backend:
-
-```bash
-cd backend
-./vendor/bin/sail artisan test
-```
-
 Frontend:
 
 ```bash
 cd frontend
-npm run lint
-npm run build
+npm install
+npm run dev
 ```
 
-## Dokumentasi
+Default local URLs:
 
-Dokumen utama ada di folder docs:
+- backend: `http://localhost:8000`
+- frontend: `http://localhost:3000`
 
-- docs/api.md
-- docs/architecture.md
-- docs/data-model.md
-- docs/local-dev-setup.md
-- docs/roadmap.md
-- docs/frontend-roadmap.md
-- docs/runbook.md
+## Main Documentation
 
-## Catatan Scope Repository
-
-Repository ini saat ini disederhanakan agar hanya melacak:
-
-- backend
-- frontend
-- docs
-- README.md
-
-## Owner
-
-- Sendyawldn
+- `docs/technical-status.md`
+- `docs/architecture.md`
+- `docs/api.md`
+- `docs/openapi.yaml`
+- `docs/data-model.md`
+- `docs/local-dev-setup.md`
+- `docs/roadmap.md`
+- `docs/frontend-roadmap.md`
+- `docs/runbook.md`

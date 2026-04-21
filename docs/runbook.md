@@ -1,152 +1,132 @@
-# Project FISHBOOKER - Operations Runbook
+# FishBooker Operations Runbook
 
-## 1. Overview
+Last reviewed: 2026-04-21
 
-Runbook ini mencakup tugas operasional untuk menjalankan FISHBOOKER di lingkungan produksi dan pengembangan, termasuk prosedur pemeliharaan dan respon insiden.
+## Scope
 
----
+This runbook covers the commands and checks that are supported by the codebase today.
+Older references to custom booking maintenance commands have been removed because those commands do not exist in this repository.
 
-## 2. Weekly & Daily Operations Workflow
-
-### 2.1 Automated Cleanup (Scheduler Mode)
-
-Sistem menjalankan pembersihan otomatis untuk booking yang kedaluwarsa (tidak dibayar dalam 15 menit):
+## Start the Local Stack
 
 ```bash
 cd backend
-./vendor/bin/sail artisan schedule:work
+./vendor/bin/sail up -d
 ```
 
-Tugas ini akan memeriksa tabel `bookings` setiap menit dan mengubah status menjadi `EXPIRED` serta membebaskan slots.
-
-### 2.2 Manual Maintenance Trigger
-
-Jika perlu memicu pembersihan secara manual via CLI:
+To stop the stack:
 
 ```bash
-./vendor/bin/sail artisan booking:clear-expired
+cd backend
+./vendor/bin/sail down
 ```
 
-Atau via API (Admin Only):
+## Health Checks
+
+Application health endpoint:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/admin/maintenance/clear-expired \
-  -H "Authorization: Bearer <ADMIN_TOKEN>"
+curl -i http://localhost:8000/up
 ```
 
----
-
-## 3. Governance Operations (Management)
-
-### List Active Bookings
+Slot API check:
 
 ```bash
-./vendor/bin/sail artisan booking:list --status=pending
+curl http://localhost:8000/api/v1/slots
 ```
 
-### Approve/Verify Payment Manually (Offline Payment)
-
-Jika pelanggan membayar cash di tempat:
+Login API check:
 
 ```bash
-./vendor/bin/sail artisan booking:verify <BOOKING_ID>
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password"}'
 ```
 
-### Slot Maintenance Control
+## Database Operations
 
-Menutup lapak untuk perbaikan:
+Reset schema and seed data:
 
 ```bash
-./vendor/bin/sail artisan slot:set-status <SLOT_NUMBER> maintenance
+cd backend
+./vendor/bin/sail artisan migrate:fresh --seed
 ```
 
----
-
-## 4. Monitoring & Health Check
-
-### API Health Check
+Run tests:
 
 ```bash
-curl http://localhost:8000/api/health
+cd backend
+./vendor/bin/sail artisan test
 ```
 
-**Response:**
+## Frontend Operations
 
-```json
-{ "status": "healthy", "version": "1.0.0", "database": "connected" }
+Install dependencies:
+
+```bash
+cd frontend
+npm install
 ```
 
-### Application Logs
+Run development server:
 
-Melihat log error Laravel secara real-time:
+```bash
+cd frontend
+npm run dev
+```
+
+Lint:
+
+```bash
+cd frontend
+npm run lint
+```
+
+Build:
+
+```bash
+cd frontend
+npm run build
+```
+
+## Logs and Diagnostics
+
+Laravel logs:
 
 ```bash
 tail -f backend/storage/logs/laravel.log
 ```
 
-### Redis Monitoring (Slot Locking)
+List running Sail containers:
 
 ```bash
-./vendor/bin/sail redis-cli monitor
+cd backend
+./vendor/bin/sail ps
 ```
 
----
+Restart Sail services:
 
-## 5. Incident Response (Penanganan Masalah)
+```bash
+cd backend
+./vendor/bin/sail restart
+```
 
-### API Service Down
+## Incident Notes
 
-1. Cek status container: `docker ps`
-2. Restart Sail: `./vendor/bin/sail restart`
-3. Jika database korup: Jalankan `sail artisan migrate:fresh --seed`
-   > ⚠️ **Peringatan:** Data akan hilang!
+### Backend is unreachable from the frontend
 
-### Webhook Midtrans Tidak Masuk
+- Confirm `./vendor/bin/sail up -d` is running
+- Confirm the browser can reach `http://localhost:8000`
+- Confirm `NEXT_PUBLIC_API_BASE_URL` points to the backend host
 
-1. Cek koneksi internet server.
-2. Verifikasi `MIDTRANS_SERVER_KEY` di `.env`.
-3. Gunakan dashboard Midtrans untuk melakukan **"Resend Webhook"**.
+### Booking requests fail with auth errors
 
-### Sistem Melambat (High Latency)
+- Log in again from the frontend header dialog
+- Confirm the bearer token is being sent
+- Confirm the user exists and the database was seeded
 
-1. Bersihkan cache:
-   ```bash
-   sail artisan cache:clear
-   ```
-2. Optimasi database:
-   ```bash
-   sail artisan model:prune
-   ```
+### Booking lock behavior looks wrong
 
----
-
-## 6. Deployment Checklist (Pre-Live)
-
-- [ ] Environment variables `.env` sudah menggunakan mode production.
-- [ ] `APP_KEY` sudah di-generate.
-- [ ] Database migration sudah dijalankan.
-- [ ] Folder `storage/` dan `bootstrap/cache/` memiliki izin akses write.
-- [ ] Midtrans Production Key sudah aktif.
-- [ ] SSL Certificate (HTTPS) aktif di domain.
-
----
-
-## 7. Performance Baseline
-
-| Metrik                 | Target                        |
-| ---------------------- | ----------------------------- |
-| API Response Time      | < 200ms untuk discovery lapak |
-| Booking Transaction    | < 1s (Atomic Transaction)     |
-| Frontend Load (Vercel) | LCP < 1.2s                    |
-
----
-
-## 8. Backup & Data Retention
-
-| Item              | Ketentuan                                                   |
-| ----------------- | ----------------------------------------------------------- |
-| Database Backup   | Dilakukan setiap jam 00:00 (WIB)                            |
-| Log Retention     | Log aplikasi disimpan selama 30 hari                        |
-| Financial Records | Disimpan permanen (Immutable) di tabel `financial_journals` |
-
----
+- Check the selected cache driver in the Laravel environment
+- Prefer a lock-capable driver such as Redis for realistic concurrency behavior
+- Reset the database and retry with a clean state if needed

@@ -1,87 +1,98 @@
-# Project FISHBOOKER - Roadmap & Execution Path
+# FishBooker Delivery Roadmap
 
-## Prinsip Eksekusi
+Last reviewed: 2026-04-21
 
-- **Linear Phase**: Fase berikutnya hanya dimulai jika fase saat ini sudah memenuhi _Definition of Done_ (DoD).
-- **Audit Ready**: Setiap fitur yang berkaitan dengan uang wajib memiliki jejak audit (_Reason Code_).
-- **Safety First**: Prioritaskan keamanan transaksi (locking) di atas estetika UI.
+## Current Delivery Summary
 
-## Fase 0 - Foundation & Blueprint (Done)
+FishBooker has completed the MVP foundation for:
 
-Tujuan: Meletakkan pondasi arsitektur dan kontrak data.
+- slot inventory and public availability
+- token-based login for API access
+- admin slot CRUD at the API level
+- admin slot control in the frontend
+- booking history API and frontend route
+- booking holds with 15-minute expiry logic
+- a customer-facing frontend to browse and book slots
 
-- [x] Architecture Blueprint & High-Level Flow.
-- [x] Data Model Draft (MySQL Schema).
-- [x] API Contract Specification.
-- [x] Repository Bootstrap (Laravel Sail + Next.js).
+The project has not implemented payment, financial reporting, or admin analytics yet.
 
-**Definition of Done:**
+## Delivery Stages
 
-- Seluruh dokumen `docs/` tersedia dan sinkron dengan struktur folder.
+### Stage 0: Foundation
 
-## Fase 1 - Core Booking Engine (Done)
+Status: done
 
-Tujuan: Pipeline reservasi end-to-end tanpa integrasi eksternal.
+Evidence:
 
-- [x] CRUD Management untuk Slot (Admin).
-- [x] Atomic Transactional Booking (Backend).
-- [x] Interactive Denah Kolam (Frontend).
-- [x] Integrasi Redis untuk temporary slot locking (15 menit).
+- Laravel 13 backend and Next.js 16 frontend are in place
+- local Sail stack is configured
+- architecture decision record exists
+- seeders and core API tests exist
 
-**Definition of Done:**
+### Stage 1: Booking MVP
 
-- User bisa pilih lapak, slot terkunci, dan data masuk ke DB tanpa duplikasi.
-- Unit Test untuk `BookingController` statusnya hijau (Pass).
+Status: done
 
-## Fase 2 - Auth & Role Governance
+Evidence:
 
-Tujuan: Mengamankan akses dan memisahkan otoritas.
+- `GET /api/v1/slots`
+- `POST /api/v1/bookings`
+- booking hold expiry handling
+- interactive pond map in the frontend
 
-- [ ] Implementasi Laravel Sanctum.
-- [ ] Role Separation: `CUSTOMER` vs `ADMIN`.
-- [ ] Protected Routes di Next.js (Auth Middleware).
-- [ ] User Profile dynamic integration di Header.
+### Stage 2: Access Control and Admin Operations
 
-**Definition of Done:**
+Status: partial
 
-- User tanpa token tidak bisa melakukan booking.
-- Admin bisa mengakses dashboard stats yang tertutup untuk customer.
+Done:
 
-## Fase 3 - Payment Gateway Integration
+- Sanctum token login
+- admin-only middleware
+- admin slot create, update, and delete API
+- admin slot route in the frontend
+- booking history endpoint and route
 
-Tujuan: Automasi verifikasi pembayaran.
+Still missing:
 
-- [ ] Integrasi Midtrans Snap API.
-- [ ] Webhook Handler untuk `settlement`, `expire`, dan `cancel`.
-- [ ] Sinkronisasi otomatis status lapak dari `booked` ke `paid`.
+- analytics dashboard UI
+- stronger protected frontend routes with backend-managed session trust
+- richer role-aware user flows
 
-**Definition of Done:**
+### Stage 3: Payments and Booking Completion
 
-- Transaksi di Sandbox Midtrans berhasil mengubah status di database FishBooker secara real-time.
+Status: not started
 
-## Fase 4 - Operational Intelligence
+Missing:
 
-Tujuan: Manajemen finansial dan audit untuk owner.
+- payment gateway integration
+- payment webhook handling
+- transition from `PENDING` to a paid or completed state
 
-- [ ] Financial Journaling otomatis.
-- [ ] Daily Revenue Report & Occupancy Analytics.
-- [ ] Export Data (CSV/PDF) untuk pembukuan.
-- [ ] WhatsApp Notification Trigger (Status: Paid).
+### Stage 4: Reporting and Operations
 
-**Definition of Done:**
+Status: not started
 
-- Laporan bulanan dapat dihasilkan dan sesuai dengan total transaksi di database.
+Missing:
 
-## Fase 5 - Production Hardening
+- revenue and occupancy reporting
+- financial journal tables
+- operational exports
+- maintenance workflows beyond manual slot status edits
 
-Tujuan: Deployment dan stabilitas.
+### Stage 5: Hardening and Release Readiness
 
-- [ ] Deployment Cloud Run (Backend) & Vercel (Frontend).
-- [ ] PWA (Progressive Web App) Support agar bisa diinstall di HP.
-- [ ] Load Testing untuk simulasi 100+ user booking bersamaan.
+Status: not started
 
-**Definition of Done:**
+Missing:
 
-- Sistem berjalan stabil di URL produksi dengan SSL aktif.
+- frontend test coverage
+- API contract publishing workflow
+- deployment runbooks for production
+- observability and alerting
 
----
+## Recommended Next Steps
+
+1. Replace client-readable auth cookies with a backend-managed or HTTP-only session strategy for stronger frontend route protection.
+2. Decide whether booking completion will be manual or payment-driven, then implement the missing status transitions.
+3. Introduce financial and audit models only after the booking completion path is defined.
+4. Add production-facing documentation once deployment targets are confirmed.

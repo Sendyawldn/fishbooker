@@ -1,0 +1,40 @@
+{
+  "project": "FishBooker",
+  "lastReviewed": "2026-04-21",
+  "surface": "customer-booking-mvp",
+  "goals": [
+    "Show slot availability clearly before the user attempts a booking",
+    "Make login and booking possible from the same page",
+    "Use strong visual separation between available, held, and maintenance states"
+  ],
+  "visualDirection": {
+    "base": "clean slate surfaces with aquatic accents",
+    "statusColors": {
+      "available": "emerald",
+      "held": "rose",
+      "maintenance": "muted slate",
+      "mapSurface": "cyan-sky gradient"
+    },
+    "tone": "practical, modern, and easy to scan on mobile and desktop"
+  },
+  "implementedComponents": [
+    "sticky auth header",
+    "hero summary section",
+    "interactive pond map",
+    "slot detail card",
+    "booking confirmation dialog",
+    "admin slot control board",
+    "admin slot create-edit dialog",
+    "booking history board"
+  ],
+  "interactionPrinciples": [
+    "Status should be visible before the user clicks into details",
+    "Booking should fail loudly and clearly when a slot is held by another user",
+    "A successful booking should expose the hold expiry time to the user"
+  ],
+  "currentGaps": [
+    "no admin analytics dashboard",
+    "no backend-managed http-only session for route protection",
+    "no dedicated loading or error route patterns"
+  ]
+}

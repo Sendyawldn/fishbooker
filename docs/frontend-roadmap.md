@@ -1,95 +1,109 @@
-# Project FISHBOOKER - Frontend Roadmap
+# FishBooker Frontend Status and Roadmap
 
-## 1. Keputusan Stack
+Last reviewed: 2026-04-21
 
-Pilihan final untuk fase pengembangan utama:
+## Current State
 
-- **Framework UI**: React (Next.js 15 - App Router)
-- **Build Tool**: Next.js Bundler (SWC)
-- **Styling**: Tailwind CSS + Shadcn UI (Design System)
-- **State & Server Data**: Next.js Server Components + Fetch API
-- **Iconography**: Lucide React
+The frontend is a Next.js 16 application with one main customer-facing page.
 
-**Alasan Pemilihan Stack:**
+Implemented:
 
-- **Next.js 15**: Fitur `router.refresh()` memungkinkan sinkronisasi status lapak tanpa reload halaman penuh.
-- **Shadcn UI**: Mempercepat pembuatan dashboard admin yang konsisten dan aksesibel.
-- **Boundary**: Pemisahan frontend dan backend sejak awal memberikan Boundary yang jelas untuk siklus rilis yang independen.
+- homepage shell with live slot fetch from the API
+- interactive pond map
+- slot detail panel
+- login dialog backed by the Laravel API
+- session persistence in `sessionStorage` and cookie-backed route gating
+- booking confirmation modal that creates a 15-minute hold
+- admin slot management route for create, edit, and delete actions
+- authenticated booking history route
 
-## 2. Keputusan Deployment
+Not implemented:
 
-- **Frontend**: Vercel (Edge Delivery untuk performa responsif).
-- **Backend API**: Cloud Run / VPS (Laravel Sail).
-- **CORS & Auth**: Tervalidasi menggunakan Laravel Sanctum.
+- payment UI
+- analytics views
 
-## 3. Arsitektur Frontend
+## Current File Map
 
-- **App Shell**: Layout terintegrasi dengan Sidebar (Admin) dan Navbar (Customer).
-- **Session Guard**: Proteksi rute berbasis role (Admin vs Customer).
-- **Real-time Sync**: Pemanfaatan revalidasi data server saat terjadi transaksi sukses.
+- `app/page.tsx`: fetches slots and renders the landing page
+- `components/AuthHeader.tsx`: login state and dialog
+- `components/InteractivePondSection.tsx`: selection state
+- `components/PondMap.tsx`: clickable slot map
+- `components/SlotCard.tsx`: booking CTA and hold feedback
+- `lib/api.ts`: typed fetch wrapper and API methods
+- `lib/auth-session.ts`: browser session helpers
 
-## 4. Roadmap Frontend per Fase
+## Delivery Status
 
-### F-0: UX Blueprint and Design System
+### Phase F0: UX baseline
 
-Tujuan: Mendefinisikan bahasa visual dan alur informasi.
+Status: partial
 
-- [ ] Arsitektur Informasi (Mapping alur booking).
-- [ ] Wireframe denah kolam interaktif (SVG/Grid).
-- [ ] Integrasi Design Token (Emerald for success, Rose for occupied).
-- **DoD**: Disetujui untuk implementasi sprint.
+What exists:
 
-### F-1: Frontend Scaffold
+- visual direction for the landing page
+- interactive booking map
+- shared UI primitives from shadcn/Radix
+- `docs/DESIGN.md`
+- `docs/design-intent.json`
 
-Tujuan: Setup base project dan layout utama.
+What is still missing:
 
-- [ ] Next.js 15 project bootstrap.
-- [ ] Layout utama (Responsive Navbar & Footer).
-- [ ] Auth guard placeholder (Login/Register page).
-- **DoD**: Halaman utama dapat berjalan di localhost.
+- page flow map
+- reusable tokens for customer and admin surfaces
 
-### F-2: Core Booking Views
+### Phase F1: customer booking surface
 
-Tujuan: Visualisasi ketersediaan lapak secara interaktif.
+Status: done for MVP+
 
-- [x] Map View: Denah kolam dengan status dinamis.
-- [x] Slot Card: Komponen detail lapak dan harga.
-- [x] Booking Modal: Alur konfirmasi pesanan yang seamless.
-- **DoD**: Data dari API Laravel dapat divisualisasikan dengan benar.
+Completed:
 
-### F-3: Admin & Analytics Dashboard
+- slot list integration
+- live availability rendering
+- login dialog
+- booking modal and refresh flow
+- booking history route for authenticated users
 
-Tujuan: Interface manajemen untuk owner kolam.
+### Phase F2: admin surface
 
-- [ ] Dashboard Overview (Statistik Pendapatan).
-- [ ] Management Table (Daftar Booking & Status Pembayaran).
-- [ ] Slot Controller (Toggle Maintenance & Edit Harga).
-- **DoD**: Admin dapat mengelola operasional kolam dari UI.
+Status: partial
 
-### F-4: Payment & Notification Integration
+Completed:
 
-Tujuan: Alur pembayaran dan invoice yang transparan.
+- `/admin/slots` route
+- frontend gate for admin session
+- create, edit, and delete actions wired to backend admin API
+- responsive admin inventory view for mobile and desktop
 
-- [ ] Midtrans Snap Integration (Popup/Redirect).
-- [ ] Payment Result Page (Success/Failed handling).
-- [ ] Digital Receipt View (Detail pesanan user).
-- **DoD**: Flow pembayaran dari klik 'Pesan' sampai 'Sukses' tervalidasi.
+Still missing:
 
-### F-5: Production Hardening
+- dashboard analytics cards backed by real reporting data
+- booking management table
+- stronger route protection using HTTP-only or backend-managed sessions instead of client-readable cookies
 
-Tujuan: Optimasi akhir dan stabilitas.
+### Phase F3: payments and post-booking flow
 
-- [ ] Error Boundary & Loading Skeletons.
-- [ ] PWA Support (Installable di smartphone pemancing).
-- [ ] Performance Audit (Lighthouse score > 90).
-- **DoD**: Siap digunakan untuk operasional harian (Production Ready).
+Status: not started
 
-## 5. Urutan Eksekusi yang Disarankan
+Missing:
 
-1. Selesaikan **F-0** dan **F-1** (Sudah dimulai dengan setup Next.js).
-2. Fokus pada **F-2** (Interactive Map) untuk menyelesaikan Core Engine.
-3. Masuk ke **F-3** (Admin View) bersamaan dengan implementasi Auth di Backend.
-4. Aktifkan **F-4** jika integrasi Midtrans sudah siap.
-5. Tutup dengan **F-5** sebelum sidang atau rilis publik.
+- payment initiation UI
+- payment result page
+- receipt or booking summary page
 
----
+### Phase F4: production hardening
+
+Status: not started
+
+Missing:
+
+- route guards
+- loading and error boundaries
+- frontend tests
+- deployment notes
+
+## Recommended Next Frontend Work
+
+1. Build an admin route that lists slots and updates status or price through the existing admin API.
+2. Upgrade route protection from client-readable cookies to a backend-managed session or HTTP-only token flow.
+3. Add an active hold countdown or booking detail drill-down for customers.
+4. Add tests around `lib/api.ts`, auth session helpers, and key booking interactions.

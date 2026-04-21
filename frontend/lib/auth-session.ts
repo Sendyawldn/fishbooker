@@ -1,14 +1,50 @@
 "use client";
 
 import type { LoginResponse } from "@/lib/api";
+import {
+  AUTH_CHANGE_EVENT,
+  AUTH_SESSION_COOKIE,
+  AUTH_SESSION_KEY,
+  AuthSession,
+  parseAuthSession,
+  serializeAuthSession,
+} from "@/lib/auth-session-shared";
 
-const AUTH_SESSION_KEY = "fishbooker:auth-session";
-const AUTH_CHANGE_EVENT = "fishbooker-auth-changed";
+export type { AuthSession } from "@/lib/auth-session-shared";
 
-export interface AuthSession {
-  accessToken: string;
-  tokenType: string;
-  user: LoginResponse["user"];
+function readAuthSessionCookie(): AuthSession | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const cookiePrefix = `${AUTH_SESSION_COOKIE}=`;
+  const cookieValue = document.cookie
+    .split("; ")
+    .find((cookieEntry) => cookieEntry.startsWith(cookiePrefix))
+    ?.slice(cookiePrefix.length);
+
+  if (!cookieValue) {
+    return null;
+  }
+
+  return parseAuthSession(decodeURIComponent(cookieValue));
+}
+
+function persistAuthSessionCookie(session: AuthSession): void {
+  document.cookie = [
+    `${AUTH_SESSION_COOKIE}=${encodeURIComponent(serializeAuthSession(session))}`,
+    "Path=/",
+    "SameSite=Lax",
+  ].join("; ");
+}
+
+function clearAuthSessionCookie(): void {
+  document.cookie = [
+    `${AUTH_SESSION_COOKIE}=`,
+    "Path=/",
+    "Max-Age=0",
+    "SameSite=Lax",
+  ].join("; ");
 }
 
 export function readAuthSession(): AuthSession | null {
@@ -21,22 +57,22 @@ export function readAuthSession(): AuthSession | null {
     return null;
   }
 
-  try {
-    const parsed = JSON.parse(rawSession) as Partial<AuthSession>;
+  const parsedSession = parseAuthSession(rawSession);
 
-    if (
-      typeof parsed.accessToken !== "string" ||
-      typeof parsed.tokenType !== "string" ||
-      typeof parsed.user !== "object" ||
-      parsed.user === null
-    ) {
-      return null;
-    }
-
-    return parsed as AuthSession;
-  } catch {
-    return null;
+  if (parsedSession) {
+    return parsedSession;
   }
+
+  const cookieSession = readAuthSessionCookie();
+
+  if (cookieSession) {
+    window.sessionStorage.setItem(
+      AUTH_SESSION_KEY,
+      serializeAuthSession(cookieSession),
+    );
+  }
+
+  return cookieSession;
 }
 
 export function persistAuthSession(loginResponse: LoginResponse): AuthSession {
@@ -46,7 +82,11 @@ export function persistAuthSession(loginResponse: LoginResponse): AuthSession {
     user: loginResponse.user,
   };
 
-  window.sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(nextSession));
+  window.sessionStorage.setItem(
+    AUTH_SESSION_KEY,
+    serializeAuthSession(nextSession),
+  );
+  persistAuthSessionCookie(nextSession);
   window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
 
   return nextSession;
@@ -58,6 +98,7 @@ export function clearAuthSession(): void {
   }
 
   window.sessionStorage.removeItem(AUTH_SESSION_KEY);
+  clearAuthSessionCookie();
   window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
 }
 

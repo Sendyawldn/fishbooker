@@ -1,105 +1,126 @@
-# Local Development Setup Guide
+# Local Development Setup
 
-## 1. Prerequisites
+Last reviewed: 2026-04-21
 
-Sebelum memulai, pastikan mesin lokal kamu sudah terinstall software berikut:
+## Prerequisites
 
-- **Docker Desktop**: Untuk menjalankan Laravel Sail.
-- **Node.js (v20+) & npm**: Untuk menjalankan frontend Next.js.
-- **Composer**: Untuk manajemen dependensi PHP (opsional jika menggunakan Sail).
-- **Git**: Untuk manajemen versi.
+- Docker and Docker Compose support
+- Node.js 20 or newer
+- npm
+- Composer
 
-## 2. Backend Setup (Laravel 12)
+## Repository Layout
 
-### Step 1: Clone and Environment
+- `backend/`: Laravel API and Sail stack
+- `frontend/`: Next.js app
+- `docs/`: technical documentation
+
+## Backend Setup
 
 ```bash
 cd backend
+composer install
 cp .env.example .env
-```
-
-Pastikan mengedit `.env` untuk konfigurasi Database dan Midtrans Sandbox Keys.
-
-### Step 2: Install Dependencies via Docker Sail
-
-```bash
-docker run --rm \
-    -u "$(id -u):$(id -g)" \
-    -v "$(pwd):/var/www/html" \
-    -w /var/www/html" \
-    laravelsail/php84-composer:latest \
-    composer install --ignore-platform-reqs
-```
-
-### Step 3: Booting the Infrastructure
-
-```bash
 ./vendor/bin/sail up -d
+./vendor/bin/sail artisan key:generate
+./vendor/bin/sail artisan migrate:fresh --seed
 ```
 
-### Step 4: Database Initialization
+The backend is available at `http://localhost:8000` when Sail uses the default port mapping.
+
+### Backend Verification
+
+Health check:
 
 ```bash
-./vendor/bin/sail artisan key:generate
-./vendor/bin/sail artisan migrate --seed
+curl -i http://localhost:8000/up
 ```
 
-## 3. Frontend Setup (Next.js 15)
+Read slots:
 
-### Step 1: Install Package
+```bash
+curl http://localhost:8000/api/v1/slots
+```
+
+Login with seeded user:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password"}'
+```
+
+## Frontend Setup
 
 ```bash
 cd frontend
 npm install
 ```
 
-### Step 2: Environment Setup
+Optional environment file:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=your_client_key_here
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_DEMO_EMAIL=test@example.com
+NEXT_PUBLIC_DEMO_PASSWORD=password
 ```
 
-### Step 3: Run Development Server
+Run the frontend:
 
 ```bash
 npm run dev
 ```
 
-Aplikasi tersedia di http://localhost:3000
+The frontend is available at `http://localhost:3000`.
 
-## 4. Connectivity Verification
+## Common Commands
 
-- Check Backend API: http://localhost:8000/api/health
-- Check Auth Session: login pakai akun seeder
-- Check Redis:
+Backend tests:
 
 ```bash
-./vendor/bin/sail redis-cli monitor
+cd backend
+./vendor/bin/sail artisan test
 ```
 
-## 5. Common CLI Commands
-
-- Reset DB & Seed: `./vendor/bin/sail artisan migrate:fresh --seed`
-- Run Tests: `./vendor/bin/sail artisan test`
-- Lint Frontend: `npm run lint`
-- Clear Cache: `./vendor/bin/sail artisan optimize:clear`
-
-## 6. Troubleshooting
-
-### Docker Port Conflict
-
-Ubah `APP_PORT` atau `FORWARD_DB_PORT` di `.env`
-
-### Node Modules Error
+Frontend lint:
 
 ```bash
-rm -rf node_modules package-lock.json
-npm install
+cd frontend
+npm run lint
 ```
 
-### Permission Denied (Linux)
+Frontend production build:
 
 ```bash
-sudo chown -R $USER:$USER backend/storage
+cd frontend
+npm run build
 ```
+
+Reset database:
+
+```bash
+cd backend
+./vendor/bin/sail artisan migrate:fresh --seed
+```
+
+View Laravel logs:
+
+```bash
+tail -f backend/storage/logs/laravel.log
+```
+
+## Local Stack Services
+
+The Sail compose file includes:
+
+- application container
+- MySQL 8.4
+- Redis
+- Mailpit
+
+Redis is available in the local stack and should be used for realistic cache-lock behavior in development and production-like environments.
+
+## Known Notes
+
+- The frontend expects the backend to be reachable from the browser, not only from inside Docker.
+- The current frontend stores the API token in `sessionStorage`, so a full browser session reset clears the login state.

@@ -70,7 +70,7 @@ export default async function HomePage() {
         </div>
 
         {/* 3. Slot Grid Section */}
-        <div className="mt-16">
+        <div className="mt-16" id="pond-map">
           <div className="flex items-center justify-between mb-8 px-2">
             <div>
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -102,7 +102,7 @@ export default async function HomePage() {
       </section>
 
       {/* Footer minimalis */}
-      <footer className="py-12 text-center border-t border-slate-100 mt-20">
+      <footer className="py-12 text-center border-t border-slate-100 mt-20" id="bantuan">
         <p className="text-slate-400 text-xs font-medium">
           © 2026 FishBooker Pro • Built for Final Project UBSI
         </p>
