@@ -134,9 +134,10 @@ export default function AdminSlotsPageClient() {
   );
 
   useEffect(() => {
-    const nextSession = readAuthSession();
-    setSession(nextSession);
-    setHasHydratedSession(true);
+    void readAuthSession().then((activeSession) => {
+      setSession(activeSession);
+      setHasHydratedSession(true);
+    });
 
     return subscribeAuthSession((updatedSession) => {
       setSession(updatedSession);
@@ -220,14 +221,11 @@ export default function AdminSlotsPageClient() {
     setCreateErrorMessage(null);
 
     try {
-      const response = await createAdminSlot(
-        {
-          slotNumber,
-          price,
-          status: values.status,
-        },
-        session.accessToken,
-      );
+      const response = await createAdminSlot({
+        slotNumber,
+        price,
+        status: values.status,
+      });
 
       setFeedback({
         tone: "success",
@@ -265,7 +263,6 @@ export default function AdminSlotsPageClient() {
           price,
           status: values.status,
         },
-        session.accessToken,
       );
 
       setFeedback({
@@ -302,7 +299,7 @@ export default function AdminSlotsPageClient() {
     setFeedback(null);
 
     try {
-      const response = await deleteAdminSlot(slot.id, session.accessToken);
+      const response = await deleteAdminSlot(slot.id);
       setFeedback({
         tone: "success",
         message: response.message,

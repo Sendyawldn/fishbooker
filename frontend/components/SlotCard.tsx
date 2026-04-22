@@ -10,7 +10,13 @@ import {
   Clock3,
   Fish,
 } from "lucide-react";
-import { ApiError, createBooking, Slot } from "@/lib/api";
+import {
+  ApiError,
+  createBooking,
+  initiateBookingPayment,
+  type PaymentMethod,
+  Slot,
+} from "@/lib/api";
 import {
   AuthSession,
   readAuthSession,
@@ -79,6 +85,8 @@ export default function SlotCard({ slot }: SlotCardProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>("MANUAL_TRANSFER");
 
   const isAvailable = slot.status === "TERSEDIA";
 
@@ -95,7 +103,9 @@ export default function SlotCard({ slot }: SlotCardProps) {
   }, [slot.status]);
 
   useEffect(() => {
-    setSession(readAuthSession());
+    void readAuthSession().then((activeSession) => {
+      setSession(activeSession);
+    });
 
     return subscribeAuthSession((nextSession) => {
       setSession(nextSession);
@@ -103,7 +113,7 @@ export default function SlotCard({ slot }: SlotCardProps) {
   }, []);
 
   const handleBooking = async () => {
-    const activeSession = readAuthSession();
+    const activeSession = await readAuthSession();
     if (!activeSession) {
       setSuccessMessage(null);
       setLockedUntil(null);
@@ -119,20 +129,27 @@ export default function SlotCard({ slot }: SlotCardProps) {
     setLockedUntil(null);
 
     try {
-      const bookingResponse = await createBooking(
-        slot.id,
-        activeSession.accessToken,
+      const bookingResponse = await createBooking(slot.id);
+      const paymentResponse = await initiateBookingPayment(
+        bookingResponse.data.id,
+        paymentMethod,
       );
 
-      setSuccessMessage(bookingResponse.message);
-      if (bookingResponse.valid_until) {
-        setLockedUntil(bookingResponse.valid_until);
+      setSuccessMessage(
+        paymentMethod === "CASH"
+          ? "Booking dikunci dan pembayaran tunai menunggu konfirmasi admin."
+          : "Booking dikunci. Mengarahkan ke halaman pembayaran...",
+      );
+
+      if (paymentResponse.data.expires_at) {
+        setLockedUntil(paymentResponse.data.expires_at);
       }
 
       setTimeout(() => {
         setOpen(false);
+        router.push(`/payments/${paymentResponse.data.reference}`);
         router.refresh();
-      }, 900);
+      }, 700);
     } catch (error) {
       if (error instanceof ApiError) {
         const payload = error.payload;
@@ -244,6 +261,46 @@ export default function SlotCard({ slot }: SlotCardProps) {
             </div>
           </div>
 
+          <div className="space-y-3 rounded-2xl border border-slate-200 p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+              Metode Pembayaran
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("MANUAL_TRANSFER")}
+                className={`rounded-2xl border px-4 py-3 text-left transition ${
+                  paymentMethod === "MANUAL_TRANSFER"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-white text-slate-600"
+                }`}
+              >
+                <p className="text-xs font-black uppercase tracking-[0.12em]">
+                  Transfer
+                </p>
+                <p className="mt-1 text-xs font-medium">
+                  Gunakan sandbox pembayaran dan webhook otomatis.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("CASH")}
+                className={`rounded-2xl border px-4 py-3 text-left transition ${
+                  paymentMethod === "CASH"
+                    ? "border-amber-500 bg-amber-50 text-amber-700"
+                    : "border-slate-200 bg-white text-slate-600"
+                }`}
+              >
+                <p className="text-xs font-black uppercase tracking-[0.12em]">
+                  Cash
+                </p>
+                <p className="mt-1 text-xs font-medium">
+                  Bayar di lokasi, lalu admin akan konfirmasi dari dashboard.
+                </p>
+              </button>
+            </div>
+          </div>
+
           {successMessage && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
               <p className="font-bold">{successMessage}</p>
@@ -286,7 +343,7 @@ export default function SlotCard({ slot }: SlotCardProps) {
               {loading
                 ? "Memproses..."
                 : session
-                  ? "Konfirmasi Booking"
+                  ? "Booking + Lanjut Bayar"
                   : "Login Dulu"}
             </Button>
           </DialogFooter>

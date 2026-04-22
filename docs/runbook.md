@@ -1,6 +1,6 @@
 # FishBooker Operations Runbook
 
-Last reviewed: 2026-04-21
+Last reviewed: 2026-04-22
 
 ## Scope
 
@@ -122,8 +122,16 @@ cd backend
 ### Booking requests fail with auth errors
 
 - Log in again from the frontend header dialog
-- Confirm the bearer token is being sent
+- Confirm the Next.js app can read its HTTP-only auth cookies
+- Confirm the BFF route handlers can still call `GET /api/v1/auth/me`
 - Confirm the user exists and the database was seeded
+
+### Payment page does not move from pending
+
+- Confirm `MANUAL_PAYMENT_WEBHOOK_SECRET` matches in both `frontend/.env` and `backend/.env`
+- Confirm the payment row exists in the `payments` table
+- Confirm webhook calls are reaching `POST /api/v1/payments/webhooks/manual`
+- Check `payment_webhook_events` and `financial_journals` for settlement evidence
 
 ### Booking lock behavior looks wrong
 

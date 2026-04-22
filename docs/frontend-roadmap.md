@@ -1,6 +1,6 @@
 # FishBooker Frontend Status and Roadmap
 
-Last reviewed: 2026-04-21
+Last reviewed: 2026-04-22
 
 ## Current State
 
@@ -12,15 +12,18 @@ Implemented:
 - interactive pond map
 - slot detail panel
 - login dialog backed by the Laravel API
-- session persistence in `sessionStorage` and cookie-backed route gating
+- signed HTTP-only auth cookies with same-origin BFF route handlers
 - booking confirmation modal that creates a 15-minute hold
 - admin slot management route for create, edit, and delete actions
 - authenticated booking history route
+- payment page and payment initiation flow
+- admin analytics dashboard
 
-Not implemented:
+Still thin:
 
-- payment UI
-- analytics views
+- frontend test coverage
+- broader booking operations beyond payment continuation
+- richer admin drill-down filters
 
 ## Current File Map
 
@@ -30,7 +33,10 @@ Not implemented:
 - `components/PondMap.tsx`: clickable slot map
 - `components/SlotCard.tsx`: booking CTA and hold feedback
 - `lib/api.ts`: typed fetch wrapper and API methods
-- `lib/auth-session.ts`: browser session helpers
+- `lib/auth-session.ts`: same-origin session helpers
+- `app/api/**/*`: protected backend proxy routes
+- `features/payments/components/PaymentPageClient.tsx`
+- `features/admin-dashboard/components/AdminDashboardPageClient.tsx`
 
 ## Delivery Status
 
@@ -65,30 +71,30 @@ Completed:
 
 ### Phase F2: admin surface
 
-Status: partial
+Status: done for current scope
 
 Completed:
 
 - `/admin/slots` route
-- frontend gate for admin session
+- `/admin/dashboard` route
+- frontend gate for admin session via signed HTTP-only cookies
 - create, edit, and delete actions wired to backend admin API
 - responsive admin inventory view for mobile and desktop
-
-Still missing:
-
-- dashboard analytics cards backed by real reporting data
-- booking management table
-- stronger route protection using HTTP-only or backend-managed sessions instead of client-readable cookies
+- dashboard analytics cards backed by reporting data
+- CSV export entry point
+- cash payment confirmation queue
 
 ### Phase F3: payments and post-booking flow
 
-Status: not started
+Status: done for sandbox/manual provider
 
-Missing:
+Completed:
 
-- payment initiation UI
-- payment result page
-- receipt or booking summary page
+- payment initiation from pending booking
+- payment detail page
+- transfer webhook simulation flow
+- cash payment path for admin confirmation
+- booking settlement into `SUCCESS`
 
 ### Phase F4: production hardening
 
@@ -96,14 +102,13 @@ Status: not started
 
 Missing:
 
-- route guards
 - loading and error boundaries
 - frontend tests
 - deployment notes
 
 ## Recommended Next Frontend Work
 
-1. Build an admin route that lists slots and updates status or price through the existing admin API.
-2. Upgrade route protection from client-readable cookies to a backend-managed session or HTTP-only token flow.
-3. Add an active hold countdown or booking detail drill-down for customers.
-4. Add tests around `lib/api.ts`, auth session helpers, and key booking interactions.
+1. Add frontend tests around BFF auth helpers, payment page state changes, and admin dashboard actions.
+2. Add richer payment receipt and customer summary surfaces after settlement.
+3. Expand admin booking management beyond slot inventory and cash confirmation.
+4. Introduce production-specific error boundaries and observability hooks.

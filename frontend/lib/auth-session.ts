@@ -1,105 +1,55 @@
 "use client";
 
-import type { LoginResponse } from "@/lib/api";
-import {
-  AUTH_CHANGE_EVENT,
-  AUTH_SESSION_COOKIE,
-  AUTH_SESSION_KEY,
-  AuthSession,
-  parseAuthSession,
-  serializeAuthSession,
-} from "@/lib/auth-session-shared";
+import { requestAppJson } from "@/lib/api";
+import { AUTH_CHANGE_EVENT, type AuthSession } from "@/lib/auth-session-shared";
 
 export type { AuthSession } from "@/lib/auth-session-shared";
 
-function readAuthSessionCookie(): AuthSession | null {
-  if (typeof document === "undefined") {
-    return null;
-  }
-
-  const cookiePrefix = `${AUTH_SESSION_COOKIE}=`;
-  const cookieValue = document.cookie
-    .split("; ")
-    .find((cookieEntry) => cookieEntry.startsWith(cookiePrefix))
-    ?.slice(cookiePrefix.length);
-
-  if (!cookieValue) {
-    return null;
-  }
-
-  return parseAuthSession(decodeURIComponent(cookieValue));
+interface AuthSessionResponse {
+  user: AuthSession["user"] | null;
 }
 
-function persistAuthSessionCookie(session: AuthSession): void {
-  document.cookie = [
-    `${AUTH_SESSION_COOKIE}=${encodeURIComponent(serializeAuthSession(session))}`,
-    "Path=/",
-    "SameSite=Lax",
-  ].join("; ");
+function dispatchAuthChange(): void {
+  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
 }
 
-function clearAuthSessionCookie(): void {
-  document.cookie = [
-    `${AUTH_SESSION_COOKIE}=`,
-    "Path=/",
-    "Max-Age=0",
-    "SameSite=Lax",
-  ].join("; ");
+export async function readAuthSession(): Promise<AuthSession | null> {
+  const response = await requestAppJson<AuthSessionResponse>("/api/auth/session", {
+    cache: "no-store",
+  });
+
+  return response.user ? { user: response.user } : null;
 }
 
-export function readAuthSession(): AuthSession | null {
-  if (typeof window === "undefined") {
-    return null;
+export async function loginWithAuthSession(
+  email: string,
+  password: string,
+): Promise<AuthSession> {
+  const response = await requestAppJson<AuthSessionResponse>("/api/auth/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.user) {
+    throw new Error("Sesi login tidak tersedia setelah autentikasi.");
   }
 
-  const rawSession = window.sessionStorage.getItem(AUTH_SESSION_KEY);
-  if (!rawSession) {
-    return null;
-  }
+  dispatchAuthChange();
 
-  const parsedSession = parseAuthSession(rawSession);
-
-  if (parsedSession) {
-    return parsedSession;
-  }
-
-  const cookieSession = readAuthSessionCookie();
-
-  if (cookieSession) {
-    window.sessionStorage.setItem(
-      AUTH_SESSION_KEY,
-      serializeAuthSession(cookieSession),
-    );
-  }
-
-  return cookieSession;
-}
-
-export function persistAuthSession(loginResponse: LoginResponse): AuthSession {
-  const nextSession: AuthSession = {
-    accessToken: loginResponse.access_token,
-    tokenType: loginResponse.token_type,
-    user: loginResponse.user,
+  return {
+    user: response.user,
   };
-
-  window.sessionStorage.setItem(
-    AUTH_SESSION_KEY,
-    serializeAuthSession(nextSession),
-  );
-  persistAuthSessionCookie(nextSession);
-  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
-
-  return nextSession;
 }
 
-export function clearAuthSession(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
+export async function clearAuthSession(): Promise<void> {
+  await requestAppJson<{ success: boolean }>("/api/auth/logout", {
+    method: "POST",
+  }).catch(() => null);
 
-  window.sessionStorage.removeItem(AUTH_SESSION_KEY);
-  clearAuthSessionCookie();
-  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
+  dispatchAuthChange();
 }
 
 export function subscribeAuthSession(
@@ -110,7 +60,9 @@ export function subscribeAuthSession(
   }
 
   const listener = () => {
-    callback(readAuthSession());
+    void readAuthSession().then((session) => {
+      callback(session);
+    });
   };
 
   window.addEventListener(AUTH_CHANGE_EVENT, listener);

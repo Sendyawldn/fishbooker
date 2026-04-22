@@ -1,6 +1,6 @@
 # FishBooker Architecture
 
-Last reviewed: 2026-04-21
+Last reviewed: 2026-04-22
 
 ## System Summary
 
@@ -9,7 +9,7 @@ FishBooker is a monorepo with two runtime applications:
 - `backend/`: Laravel 13 API
 - `frontend/`: Next.js 16 application
 
-The current product is an MVP for slot discovery, token-based login, admin slot management, and booking holds that prevent double booking for 15 minutes.
+The current product now covers slot discovery, booking holds, HTTP-only frontend auth trust, payment initiation, payment settlement, finance journaling, and admin reporting.
 
 ## Current Architecture
 
@@ -17,13 +17,15 @@ The current product is an MVP for slot discovery, token-based login, admin slot 
 flowchart LR
     Browser[Browser]
     Frontend[Next.js 16 frontend]
+    BFF[Next.js route handlers / BFF]
     Backend[Laravel 13 API]
     MySQL[(MySQL)]
     Cache[(Laravel cache lock)]
     Redis[(Redis service in Sail)]
 
     Browser --> Frontend
-    Frontend -->|HTTP JSON| Backend
+    Frontend --> BFF
+    BFF -->|HTTP JSON + bearer token| Backend
     Backend --> MySQL
     Backend --> Cache
     Redis -. available in local stack .-> Cache
@@ -34,109 +36,139 @@ flowchart LR
 ### Authentication
 
 - Login endpoint returns a Sanctum token
+- `auth/me` returns the current bearer token owner
+- `auth/logout` revokes the current token
 - Admin authorization is enforced by `EnsureUserIsAdmin`
-- Breeze web auth routes also exist for registration, password reset, and logout
 
 Key files:
 
 - `backend/app/Http/Controllers/Api/AuthController.php`
 - `backend/app/Http/Middleware/EnsureUserIsAdmin.php`
 - `backend/routes/api.php`
-- `backend/routes/auth.php`
 
-### Slot management
-
-- Public slot list endpoint
-- Admin slot create, update, and delete endpoints
-- Slot status enum is currently stored in the `slots` table
-
-Key files:
-
-- `backend/app/Http/Controllers/Api/SlotController.php`
-- `backend/app/Http/Requests/Api/StoreSlotRequest.php`
-- `backend/app/Http/Requests/Api/UpdateSlotRequest.php`
-- `backend/app/Models/Slot.php`
-
-### Booking flow
+### Booking and hold lifecycle
 
 - Authenticated booking creation
 - Authenticated booking history lookup
 - Atomic row lock on the selected slot with `lockForUpdate()`
 - Application-level hold using `Cache::lock(...)`
-- Automatic cancellation of expired pending holds for the same slot
+- Automatic cancellation of expired pending holds for the same slot or the current user
 
 Key files:
 
 - `backend/app/Http/Controllers/Api/BookingController.php`
-- `backend/app/Http/Requests/Api/StoreBookingRequest.php`
+- `backend/app/Services/Bookings/BookingLifecycleService.php`
 - `backend/app/Models/Booking.php`
+
+### Payment lifecycle
+
+- Payment creation for a `PENDING` booking
+- Reuse of existing pending payment per booking
+- Signed manual webhook verification
+- Idempotent webhook event storage
+- Transition from `PENDING` booking to `SUCCESS` on payment capture
+- Cash confirmation flow for admins
+
+Key files:
+
+- `backend/app/Http/Controllers/Api/PaymentController.php`
+- `backend/app/Http/Controllers/Api/PaymentWebhookController.php`
+- `backend/app/Services/Payments/PaymentService.php`
+- `backend/app/Services/Payments/PaymentWebhookService.php`
+- `backend/app/Models/Payment.php`
+- `backend/app/Models/PaymentWebhookEvent.php`
+
+### Reporting and finance
+
+- Revenue aggregation from finance journals
+- Slot occupancy metrics
+- Recent transaction feed
+- Pending cash payment queue
+- CSV export for paid transactions
+
+Key files:
+
+- `backend/app/Http/Controllers/Api/AdminReportingController.php`
+- `backend/app/Services/Reporting/AdminReportingService.php`
+- `backend/app/Models/FinancialJournal.php`
 
 ## Frontend Modules in Code
 
-The frontend currently ships one public page that combines discovery, login, and booking.
-It also ships one admin route for slot operations and one authenticated user booking history route.
+The frontend now ships:
+
+- one public homepage for discovery and booking
+- one payment route
+- one booking history route
+- one admin dashboard route
+- one admin slot management route
+- same-origin route handlers that proxy protected backend calls with HTTP-only cookies
 
 Implemented UI pieces:
 
-- `frontend/app/page.tsx`: homepage and data fetch
-- `frontend/app/admin/slots/page.tsx`: admin slot route entry
+- `frontend/app/page.tsx`: homepage and public slot fetch
 - `frontend/app/bookings/page.tsx`: authenticated booking history route entry
+- `frontend/app/payments/[reference]/page.tsx`: payment route entry
+- `frontend/app/admin/dashboard/page.tsx`: admin analytics route entry
+- `frontend/app/admin/slots/page.tsx`: admin slot management route entry
+- `frontend/app/api/**/*`: Next.js BFF route handlers
 - `frontend/components/AuthHeader.tsx`: login dialog and session display
-- `frontend/components/InteractivePondSection.tsx`: slot selection shell
-- `frontend/components/PondMap.tsx`: clickable slot map
-- `frontend/components/SlotCard.tsx`: slot detail and booking modal
-- `frontend/features/admin-slots/api/adminSlotsApi.ts`: admin API adapter
-- `frontend/features/admin-slots/components/AdminSlotsPageClient.tsx`: admin container
-- `frontend/features/admin-slots/components/AdminSlotFormDialog.tsx`: create and edit dialog
-- `frontend/features/bookings/components/BookingHistoryPageClient.tsx`: booking history container
-- `frontend/lib/api.ts`: API client for slots, login, and booking
-- `frontend/lib/auth-session.ts`: client session and cookie persistence
-- `frontend/lib/auth-server.ts`: server-side cookie reader for route gating
-- `frontend/proxy.ts`: request-time route protection for admin and booking pages
-
-Analytics, payment, and broader booking operations are still missing.
+- `frontend/components/SlotCard.tsx`: slot detail and booking-to-payment flow
+- `frontend/features/bookings/components/BookingHistoryPageClient.tsx`
+- `frontend/features/payments/components/PaymentPageClient.tsx`
+- `frontend/features/admin-dashboard/components/AdminDashboardPageClient.tsx`
+- `frontend/features/admin-slots/components/AdminSlotsPageClient.tsx`
+- `frontend/lib/server/auth-cookies.ts`: signed HTTP-only cookie helpers
+- `frontend/lib/server/backend-api.ts`: backend proxy fetch helper
+- `frontend/proxy.ts`: request-time route protection for admin, booking, and payment pages
 
 ## Runtime Flow
 
-### Read slots
+### Login and route trust
 
-1. Next.js calls `GET /api/v1/slots`
-2. Laravel returns all slot rows
-3. Frontend renders map and detail card
-
-### Login
-
-1. User opens the login dialog
-2. Frontend calls `POST /api/v1/auth/login`
-3. Sanctum token is stored in `sessionStorage`
-4. Subsequent booking requests send the bearer token
+1. User submits login credentials to a Next.js same-origin route handler.
+2. The route handler calls `POST /api/v1/auth/login` on Laravel.
+3. Next.js stores the bearer token in an HTTP-only cookie.
+4. Next.js stores a signed HTTP-only auth context cookie containing only route-gating data.
+5. `proxy.ts` and server routes trust the signed auth context cookie for UX gating.
+6. Laravel Sanctum remains the final authority for every protected backend request.
 
 ### Create booking hold
 
-1. User confirms a slot booking
-2. Frontend calls `POST /api/v1/bookings`
-3. Backend acquires a short cache lock for the slot
-4. Backend opens a database transaction and locks the slot row
-5. Backend cancels expired pending holds for the same slot
-6. If an active hold exists for another user, the request fails with `SLOT_LOCKED`
-7. Otherwise a new `PENDING` booking is created with `expires_at = now + 15 minutes`
-8. Slot status is updated to `DIBOOKING`
+1. User selects a slot and confirms booking from the homepage.
+2. The frontend calls a same-origin booking route handler.
+3. Laravel acquires a cache lock and a database row lock for the slot.
+4. Expired holds for that slot are cancelled.
+5. A new `PENDING` booking is created with `expires_at = now + 15 minutes`.
+6. Slot status changes to `DIBOOKING`.
 
-### Manage slots from admin UI
+### Initiate payment
 
-1. Admin opens `/admin/slots`
-2. Frontend reads the stored session and checks for role `ADMIN`
-3. Frontend reads slot inventory from `GET /api/v1/slots`
-4. Create, update, and delete actions call the admin API endpoints with the bearer token
-5. Backend remains the final authority through Sanctum auth and admin middleware
+1. The frontend calls `POST /api/v1/bookings/{booking}/payments` through the BFF.
+2. Laravel verifies the booking still belongs to the user and is still `PENDING`.
+3. Laravel reuses an existing pending payment or creates a new one.
+4. The frontend redirects the user to `/payments/{reference}`.
 
-### View booking history
+### Settle payment through webhook
 
-1. Logged-in user opens `/bookings`
-2. Next.js checks the cookie-backed auth session in `proxy.ts` and again in the server route
-3. Frontend calls `GET /api/v1/bookings/me`
-4. Backend returns only bookings owned by the authenticated user, including slot details
-5. Expired pending bookings for that user are normalized to `CANCELLED`
+1. A webhook event is posted to `POST /api/v1/payments/webhooks/manual`.
+2. Laravel verifies the HMAC signature.
+3. Laravel stores the webhook event idempotently.
+4. On `PAID`, Laravel marks the payment `PAID`, marks the booking `SUCCESS`, and writes a `PAYMENT_CAPTURED` journal row.
+5. On failure-like statuses, Laravel cancels the booking and can release the slot.
+
+### Confirm cash payment
+
+1. A customer chooses the `CASH` method during payment creation.
+2. The payment remains `PENDING`.
+3. Admin opens `/admin/dashboard`.
+4. Admin confirms the cash payment from the pending cash queue.
+5. Laravel reuses the same settlement path to mark payment and booking as paid.
+
+### Reporting
+
+1. Admin dashboard requests analytics through a same-origin route handler.
+2. Laravel aggregates metrics from `slots`, `bookings`, `payments`, and `financial_journals`.
+3. Admin can export paid transactions as CSV from the same reporting source.
 
 ## State Model in Code
 
@@ -152,26 +184,26 @@ Analytics, payment, and broader booking operations are still missing.
 - `SUCCESS`
 - `CANCELLED`
 
-`SUCCESS` exists at the schema level but there is no payment or completion flow that sets it yet.
+### Payment status
+
+- `PENDING`
+- `PAID`
+- `FAILED`
+- `EXPIRED`
+- `CANCELLED`
 
 ## Health and Operations
 
 - Laravel health endpoint: `GET /up`
 - Local infrastructure: Sail app, MySQL, Redis, Mailpit
-- Automated domain-specific scheduler or booking cleanup command is not implemented yet
+- Payment sandbox uses signed manual webhook payloads
+- CSV reporting export is available through the admin API
 
-## Known Gaps Between Architecture Intent and Code
+## Current Architecture Gaps
 
-These items are planned or referenced elsewhere, but not implemented today:
+The largest remaining gaps are no longer the core feature slice. They are mostly follow-on hardening or provider-specific work:
 
-- Payment gateway integration
-- Webhook processing
-- Financial journal tables
-- Reporting pipeline
-- Admin analytics dashboard
-- Dedicated service and repository layers for booking and slot domains
-
-## Design Decision
-
-FishBooker currently behaves as a modular monolith split into a Laravel API and a Next.js client.
-This matches the accepted direction in `docs/architecture-decision-record.md`, but the code is still in an early stage and has not fully separated controller and service responsibilities yet.
+- replacing the manual provider with a production gateway
+- token refresh or shorter-lived token policy if production requires it
+- production observability around payment/webhook failures
+- deeper separation into repository interfaces if the service layer grows further

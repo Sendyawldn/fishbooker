@@ -1,7 +1,7 @@
 import {
   DeleteResponse,
   getSlots,
-  requestJson,
+  requestAppJson,
   SlotMutationResponse,
   SlotStatus,
   type Slot,
@@ -18,24 +18,18 @@ export interface UpdateAdminSlotInput {
   status?: SlotStatus;
 }
 
-function createAuthorizedHeaders(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 export async function listAdminSlots(): Promise<Slot[]> {
   return getSlots();
 }
 
 export async function createAdminSlot(
   input: CreateAdminSlotInput,
-  token: string,
 ): Promise<SlotMutationResponse> {
-  return requestJson<SlotMutationResponse>("/api/v1/admin/slots", {
+  return requestAppJson<SlotMutationResponse>("/api/admin/slots", {
     method: "POST",
-    headers: createAuthorizedHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       slot_number: input.slotNumber,
       price: input.price,
@@ -47,21 +41,18 @@ export async function createAdminSlot(
 export async function updateAdminSlot(
   slotId: number,
   input: UpdateAdminSlotInput,
-  token: string,
 ): Promise<SlotMutationResponse> {
-  return requestJson<SlotMutationResponse>(`/api/v1/admin/slots/${slotId}`, {
+  return requestAppJson<SlotMutationResponse>(`/api/admin/slots/${slotId}`, {
     method: "PATCH",
-    headers: createAuthorizedHeaders(token),
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(input),
   });
 }
 
-export async function deleteAdminSlot(
-  slotId: number,
-  token: string,
-): Promise<DeleteResponse> {
-  return requestJson<DeleteResponse>(`/api/v1/admin/slots/${slotId}`, {
+export async function deleteAdminSlot(slotId: number): Promise<DeleteResponse> {
+  return requestAppJson<DeleteResponse>(`/api/admin/slots/${slotId}`, {
     method: "DELETE",
-    headers: createAuthorizedHeaders(token),
   });
 }

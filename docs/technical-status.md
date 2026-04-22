@@ -1,22 +1,22 @@
 # FishBooker Technical Documentation Status
 
-Last reviewed: 2026-04-21
+Last reviewed: 2026-04-22
 
 ## Current Project State
 
-The repository is past the bootstrap stage and already has a working MVP slice:
+The repository is now beyond the original MVP slice and includes:
 
 - Laravel 13 API with Sanctum token login
+- HTTP-only frontend-managed auth session for Next.js route gating
 - public slot listing
-- admin slot CRUD API
-- admin slot management page in the frontend
-- authenticated booking history API
-- authenticated booking history page in the frontend
+- admin slot CRUD API and admin slot management page
+- authenticated booking history API and frontend page
 - booking creation with a 15-minute hold and expiry recovery
-- Next.js 16 customer-facing page for browse, login, and booking
-
-The repository is not yet at the payment, finance, reporting, or admin dashboard stage.
-The repository now has an operational admin slot control page and a booking history page, but not a broader analytics dashboard.
+- payment creation for pending bookings
+- signed manual webhook processing
+- payment-to-booking settlement and finance journal writes
+- admin analytics dashboard and finance CSV export
+- Next.js payment page with sandbox transfer simulation and cash flow support
 
 ## Documentation Audit Result
 
@@ -25,11 +25,8 @@ The repository now has an operational admin slot control page and a booking hist
 - `docs/api.md`
 - `docs/architecture.md`
 - `docs/data-model.md`
-- `docs/frontend-roadmap.md`
-- `docs/local-dev-setup.md`
-- `docs/roadmap.md`
-- `docs/runbook.md`
 - `docs/openapi.yaml`
+- `docs/runbook.md`
 - `docs/DESIGN.md`
 - `docs/design-intent.json`
 
@@ -37,21 +34,21 @@ The repository now has an operational admin slot control page and a booking hist
 
 - `docs/admin-requirements.md`
 - `docs/architecture-decision-record.md`
+- `docs/roadmap.md`
 
-These two documents describe target product direction and architectural intent.
-They are not implementation inventories.
+These documents still describe product direction, but the implementation inventory now includes payment, reporting, and admin analytics foundations in code.
 
 ## Main Corrections Made
 
-The documentation previously overstated the current system in several areas.
-The refreshed docs now remove or clearly mark these items as not implemented:
+The current docs now reflect that the repository includes:
 
-- payment gateway integration
-- payment webhooks
-- finance and reporting tables
-- admin analytics UI
-- custom operational Artisan commands that do not exist
-- non-existent health endpoint examples under `/api/health`
+- payment initiation records
+- manual webhook processing
+- finance journal storage
+- admin dashboard API and frontend
+- backend-supported HTTP-only auth trust on the frontend
+
+Remaining non-implemented areas are mostly provider-specific or production-hardening concerns, not the core feature slice itself.
 
 ## Evidence Used
 
@@ -59,21 +56,25 @@ Implementation audit:
 
 - `backend/routes/api.php`
 - `backend/app/Http/Controllers/Api/*.php`
+- `backend/app/Services/**/*`
 - `backend/database/migrations/*.php`
-- `frontend/app/page.tsx`
-- `frontend/app/bookings/page.tsx`
-- `frontend/components/*.tsx`
+- `frontend/app/api/**/*`
+- `frontend/app/admin/dashboard/page.tsx`
+- `frontend/app/payments/[reference]/page.tsx`
+- `frontend/features/admin-dashboard/**/*`
+- `frontend/features/payments/**/*`
 - `frontend/proxy.ts`
-- `frontend/lib/api.ts`
 
 Regression evidence:
 
-- `backend/tests/Feature/Api/AdminSlotManagementTest.php`
+- `backend/tests/Feature/Api/ApiAuthenticationTest.php`
 - `backend/tests/Feature/Api/BookingFlowTest.php`
+- `backend/tests/Feature/Api/PaymentWorkflowTest.php`
+- `frontend` lint and TypeScript checks
 
 ## Recommended Documentation Discipline
 
 1. Treat `docs/openapi.yaml` as the API contract source of truth.
-2. Keep `docs/architecture.md` focused on what exists, not what may exist later.
-3. Use roadmap and requirements documents for future work, not implementation claims.
-4. Update docs in the same change whenever routes, payloads, or schema change.
+2. Keep `docs/architecture.md` focused on implemented runtime flow, not tentative ideas.
+3. When swapping the manual payment provider for a real provider, update API, runbook, and data-model docs in the same change.
+4. Keep frontend auth docs explicit about the split between HTTP-only session trust in Next.js and Sanctum as the final backend authority.

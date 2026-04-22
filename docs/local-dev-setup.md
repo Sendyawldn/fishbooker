@@ -1,6 +1,6 @@
 # Local Development Setup
 
-Last reviewed: 2026-04-21
+Last reviewed: 2026-04-22
 
 ## Prerequisites
 
@@ -61,8 +61,9 @@ Optional environment file:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-NEXT_PUBLIC_DEMO_EMAIL=test@example.com
-NEXT_PUBLIC_DEMO_PASSWORD=password
+AUTH_SESSION_COOKIE_SECRET=change-this-frontend-session-secret
+AUTH_SESSION_MAX_AGE_SECONDS=43200
+MANUAL_PAYMENT_WEBHOOK_SECRET=local-manual-payment-secret
 ```
 
 Run the frontend:
@@ -123,4 +124,5 @@ Redis is available in the local stack and should be used for realistic cache-loc
 ## Known Notes
 
 - The frontend expects the backend to be reachable from the browser, not only from inside Docker.
-- The current frontend stores the API token in `sessionStorage`, so a full browser session reset clears the login state.
+- The frontend now keeps auth trust in signed HTTP-only cookies and proxies protected API calls through Next.js route handlers.
+- The payment sandbox expects `MANUAL_PAYMENT_WEBHOOK_SECRET` in the frontend to match the same secret in `backend/.env`.

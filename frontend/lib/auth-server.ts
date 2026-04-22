@@ -1,17 +1,32 @@
 import { cookies } from "next/headers";
 import {
-  AUTH_SESSION_COOKIE,
-  type AuthSession,
-  parseAuthSession,
-} from "@/lib/auth-session-shared";
+  readAuthContextCookie,
+  AUTH_CONTEXT_COOKIE,
+  type AuthRole,
+} from "@/lib/server/auth-cookies";
 
-export async function readServerAuthSession(): Promise<AuthSession | null> {
+export interface ServerAuthSession {
+  user: {
+    id: number;
+    role: AuthRole;
+  };
+  expiresAt: string;
+}
+
+export async function readServerAuthSession(): Promise<ServerAuthSession | null> {
   const cookieStore = await cookies();
-  const rawAuthSession = cookieStore.get(AUTH_SESSION_COOKIE)?.value ?? null;
+  const rawAuthContext = cookieStore.get(AUTH_CONTEXT_COOKIE)?.value;
+  const authContext = readAuthContextCookie(rawAuthContext);
 
-  if (!rawAuthSession) {
+  if (!authContext) {
     return null;
   }
 
-  return parseAuthSession(decodeURIComponent(rawAuthSession));
+  return {
+    user: {
+      id: authContext.userId,
+      role: authContext.role,
+    },
+    expiresAt: authContext.expiresAt,
+  };
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreBookingRequest;
 use App\Models\Booking;
 use App\Models\Slot;
+use App\Services\Bookings\BookingLifecycleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -13,6 +14,11 @@ use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
+    public function __construct(
+        private readonly BookingLifecycleService $bookingLifecycleService,
+    ) {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -23,7 +29,7 @@ class BookingController extends Controller
             ], 401);
         }
 
-        $this->cancelExpiredBookingsForUser($user->id);
+        $this->bookingLifecycleService->cancelExpiredBookingsForUser($user->id);
 
         $bookings = Booking::query()
             ->with([
@@ -70,21 +76,8 @@ class BookingController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                $expiredBookingIds = Booking::query()
-                    ->where('slot_id', $slotId)
-                    ->where('status', 'PENDING')
-                    ->whereNotNull('expires_at')
-                    ->where('expires_at', '<=', $now)
-                    ->pluck('id');
-
-                if ($expiredBookingIds->isNotEmpty()) {
-                    Booking::query()
-                        ->whereIn('id', $expiredBookingIds)
-                        ->update(['status' => 'CANCELLED']);
-
-                    $slot->update(['status' => 'TERSEDIA']);
-                    $slot->refresh();
-                }
+                $this->bookingLifecycleService->cancelExpiredBookingsForSlot($slotId);
+                $slot->refresh();
 
                 $activeHoldBooking = Booking::query()
                     ->where('slot_id', $slotId)
@@ -141,38 +134,4 @@ class BookingController extends Controller
         }
     }
 
-    private function cancelExpiredBookingsForUser(int $userId): void
-    {
-        $now = now();
-
-        $expiredBookings = Booking::query()
-            ->where('user_id', $userId)
-            ->where('status', 'PENDING')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', $now)
-            ->get(['id', 'slot_id']);
-
-        if ($expiredBookings->isEmpty()) {
-            return;
-        }
-
-        Booking::query()
-            ->whereIn('id', $expiredBookings->pluck('id'))
-            ->update(['status' => 'CANCELLED']);
-
-        foreach ($expiredBookings->pluck('slot_id')->unique() as $slotId) {
-            $hasActiveHold = Booking::query()
-                ->where('slot_id', $slotId)
-                ->where('status', 'PENDING')
-                ->where('expires_at', '>', $now)
-                ->exists();
-
-            if (! $hasActiveHold) {
-                Slot::query()
-                    ->whereKey($slotId)
-                    ->where('status', 'DIBOOKING')
-                    ->update(['status' => 'TERSEDIA']);
-            }
-        }
-    }
 }

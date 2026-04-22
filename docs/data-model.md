@@ -1,11 +1,10 @@
 # FishBooker Data Model
 
-Last reviewed: 2026-04-21
+Last reviewed: 2026-04-22
 
 ## Scope
 
-This document describes the database structures that are present in the Laravel migrations today.
-Older references to finance, analytics, and payment tables are product targets, not implemented schema.
+This document describes the database structures that are present in the Laravel migrations today, including payment, webhook, and finance journal tables that are now part of the implemented flow.
 
 ## Primary Application Tables
 
@@ -24,11 +23,6 @@ Key columns:
 - `remember_token`
 - `created_at`, `updated_at`
 
-Notes:
-
-- Role-based authorization for admin endpoints depends on `role`.
-- Seeder creates one default user with email `test@example.com`.
-
 ### `slots`
 
 Purpose: fish pond slot inventory and current availability state.
@@ -44,7 +38,7 @@ Key columns:
 Notes:
 
 - `slot_number` is not unique yet at the schema level.
-- Slot status is updated directly during booking and admin maintenance flows.
+- Slot status is updated by booking, payment settlement, and admin maintenance flows.
 
 ### `bookings`
 
@@ -57,19 +51,105 @@ Key columns:
 - `slot_id` foreign key to `slots.id`
 - `booking_time` timestamp
 - `expires_at` timestamp nullable
+- `paid_at` timestamp nullable
 - `status` enum: `PENDING`, `SUCCESS`, `CANCELLED`
 - `created_at`, `updated_at`
 
 Indexes:
 
-- index on `expires_at`
-- composite index on `slot_id, status`
+- composite index on `status, expires_at`
+- composite index on `user_id, status`
 
 Notes:
 
-- Current code creates `PENDING` bookings only.
-- Expired pending holds are converted to `CANCELLED` during the next booking attempt for the same slot.
-- There is no separate payment record yet.
+- `PENDING` means the hold still exists and payment has not settled.
+- `SUCCESS` is now set by the payment settlement flow.
+- Expired pending holds are normalized to `CANCELLED`.
+
+### `payments`
+
+Purpose: one or more payment attempts associated with a booking.
+
+Key columns:
+
+- `id` bigint primary key
+- `booking_id` foreign key to `bookings.id`
+- `user_id` foreign key to `users.id`
+- `provider` string
+- `method` string
+- `status` string
+- `amount` unsigned bigint
+- `currency` string
+- `reference` uuid unique
+- `gateway_reference` string nullable unique
+- `checkout_url` string nullable
+- `expires_at` timestamp nullable
+- `paid_at` timestamp nullable
+- `metadata` json nullable
+- `created_at`, `updated_at`
+
+Indexes:
+
+- composite index on `booking_id, status`
+- composite index on `user_id, status`
+- composite index on `provider, status`
+
+Notes:
+
+- The local implementation uses provider `MANUAL`.
+- Supported methods in code today are `MANUAL_TRANSFER` and `CASH`.
+- Statuses observed in code today are `PENDING`, `PAID`, `FAILED`, `EXPIRED`, and `CANCELLED`.
+
+### `payment_webhook_events`
+
+Purpose: idempotent audit log for inbound payment webhook events.
+
+Key columns:
+
+- `id` bigint primary key
+- `payment_id` foreign key nullable to `payments.id`
+- `provider` string
+- `event_id` string
+- `event_type` string
+- `signature_hash` string nullable
+- `payload` json
+- `processed_at` timestamp nullable
+- `created_at`, `updated_at`
+
+Constraints:
+
+- unique key on `provider, event_id`
+
+Notes:
+
+- Duplicate webhook events are ignored after the first successful insert.
+- The stored payload allows replay analysis without exposing raw secrets.
+
+### `financial_journals`
+
+Purpose: immutable finance ledger rows derived from successful payment capture.
+
+Key columns:
+
+- `id` bigint primary key
+- `booking_id` foreign key to `bookings.id`
+- `payment_id` foreign key to `payments.id`
+- `entry_type` string
+- `amount` unsigned bigint
+- `currency` string
+- `description` string
+- `recorded_at` timestamp
+- `metadata` json nullable
+- `created_at`, `updated_at`
+
+Constraints:
+
+- unique key on `payment_id, entry_type`
+
+Notes:
+
+- The implemented entry type today is `PAYMENT_CAPTURED`.
+- Application code treats the table as append-only and does not update or delete journal rows during normal flows.
 
 ## Authentication and Framework Tables
 
@@ -98,7 +178,11 @@ Purpose: queue support and failed job tracking.
 ```mermaid
 erDiagram
     USERS ||--o{ BOOKINGS : creates
+    USERS ||--o{ PAYMENTS : initiates
     SLOTS ||--o{ BOOKINGS : reserves
+    BOOKINGS ||--o{ PAYMENTS : bills
+    PAYMENTS ||--o{ PAYMENT_WEBHOOK_EVENTS : records
+    PAYMENTS ||--o{ FINANCIAL_JOURNALS : captures
 
     USERS {
       bigint id PK
@@ -119,7 +203,18 @@ erDiagram
       bigint slot_id FK
       timestamp booking_time
       timestamp expires_at
+      timestamp paid_at
       enum status
+    }
+
+    PAYMENTS {
+      bigint id PK
+      bigint booking_id FK
+      bigint user_id FK
+      uuid reference
+      string method
+      string status
+      bigint amount
     }
 ```
 
@@ -132,14 +227,8 @@ Current seeders create:
 
 The seeded slots intentionally include mixed statuses so the frontend can show available, held, and maintenance states.
 
-## Not Implemented Yet
+## Operational Notes
 
-The following entities appear in older planning documents but do not exist in migrations today:
-
-- `financial_journals`
-- `daily_summaries`
-- `user_activity_logs`
-- payment gateway reference tables
-- site configuration tables
-
-If those features are added later, update this document and the migrations in the same change.
+- Payment settlement writes both `payments.paid_at` and `bookings.paid_at`.
+- Failed or expired payment outcomes cancel the booking and can release the slot back to `TERSEDIA`.
+- The admin dashboard and CSV export read from `payments` and `financial_journals`.

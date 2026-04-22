@@ -1,6 +1,6 @@
 # FishBooker Frontend Design
 
-Last reviewed: 2026-04-21
+Last reviewed: 2026-04-22
 
 ## Purpose
 
@@ -17,6 +17,8 @@ The current frontend is a single-page customer experience for:
 - creating a booking hold
 - managing slots from an admin control page
 - reviewing the authenticated user's booking history
+- reviewing and finishing payment from a dedicated payment page
+- monitoring metrics from an admin analytics dashboard
 
 ## Design Direction
 
@@ -68,6 +70,19 @@ The UI uses a calm aquatic look with strong contrast between system states:
 - slot and hold metadata grouped into scan-friendly cards
 - refresh action for quick state sync after booking
 
+### Payment board
+
+- dedicated route for a payment reference
+- clear payment state badge
+- actions for transfer sandbox simulation or cash waiting state
+
+### Admin analytics board
+
+- revenue and occupancy summary cards
+- recent transaction feed
+- pending cash confirmation queue
+- quick export action
+
 ## Interaction Rules
 
 - Users should understand slot status before opening the booking dialog.
@@ -85,13 +100,12 @@ Current labels and state mapping:
 
 ## Current Constraints
 
-- Auth state is stored in `sessionStorage`
-- A client-readable cookie mirrors session state for request-time route gating
-- `proxy.ts` and server route checks gate admin and booking pages for UX, while the backend remains the final authorization layer
-- Analytics and booking administration views do not exist yet
+- Auth trust now lives in signed HTTP-only cookies managed by Next.js route handlers
+- `proxy.ts` and server route checks gate admin, booking, and payment pages for UX, while Laravel Sanctum remains the final authorization layer
+- The current payment provider is a manual sandbox, not a production gateway
 
 ## Next Design Tasks
 
-1. Define page flows for admin operations and booking history.
-2. Promote repeated colors, spacing, and status tokens into a clearer shared token map.
-3. Add empty, loading, and error states for more frontend routes as they are introduced.
+1. Promote repeated colors, spacing, and status tokens into a clearer shared token map.
+2. Add richer receipt states and post-payment customer summary surfaces.
+3. Extend admin analytics into deeper booking and finance drill-down views.

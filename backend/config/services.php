@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'manual_payment' => [
+        'provider' => env('MANUAL_PAYMENT_PROVIDER', 'MANUAL'),
+        'webhook_secret' => env('MANUAL_PAYMENT_WEBHOOK_SECRET', 'local-manual-payment-secret'),
+    ],
+
 ];

@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: >
     OpenAPI contract for the API routes that are implemented in this repository
-    as of 2026-04-21.
+    as of 2026-04-22.
 servers:
   - url: http://localhost:8000
     description: Local backend root
@@ -12,7 +12,10 @@ tags:
   - name: Auth
   - name: Slots
   - name: Bookings
+  - name: Payments
+  - name: Webhooks
   - name: Admin Slots
+  - name: Admin Reporting
 paths:
   /api/v1/auth/login:
     post:
@@ -71,6 +74,44 @@ paths:
                 $ref: '#/components/schemas/ValidationErrorResponse'
         '401':
           description: Email or password is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Return the currently authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMeResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the current Sanctum token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          description: Missing or invalid bearer token
           content:
             application/json:
               schema:
@@ -219,6 +260,114 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/v1/bookings/{booking}/payments:
+    post:
+      tags: [Payments]
+      summary: Create or reuse a payment for a pending booking
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BookingId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '200':
+          description: Payment returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Booking does not belong to the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Booking is expired or cannot be paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+  /api/v1/payments/{reference}:
+    get:
+      tags: [Payments]
+      summary: Return payment detail by payment reference
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentReference'
+      responses:
+        '200':
+          description: Payment detail returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Payment does not belong to the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/payments/webhooks/manual:
+    post:
+      tags: [Webhooks]
+      summary: Process a signed manual payment webhook
+      parameters:
+        - name: X-Fishbooker-Event-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            example: evt-123
+        - name: X-Fishbooker-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+            example: 87d4f4f6472d84af0f5014e2f48bbf8f1b4d9d170fb71b50c8f3c2507bb715aa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentWebhookRequest'
+      responses:
+        '200':
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentWebhookResponse'
+        '401':
+          description: Invalid webhook signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
   /api/v1/admin/slots:
     post:
       tags: [Admin Slots]
@@ -434,6 +583,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/v1/admin/dashboard:
+    get:
+      tags: [Admin Reporting]
+      summary: Return admin analytics dashboard data
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard data returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboardResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/admin/reports/finance/export:
+    get:
+      tags: [Admin Reporting]
+      summary: Export paid transactions as CSV
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: CSV file returned
+          content:
+            text/csv:
+              schema:
+                type: string
+                example: '"reference","method","amount"'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/admin/payments/{payment}/confirm-cash:
+    post:
+      tags: [Admin Reporting]
+      summary: Confirm a pending cash payment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCashConfirmRequest'
+      responses:
+        '200':
+          description: Cash payment confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCashConfirmResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Payment is not a confirmable cash payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
 components:
   securitySchemes:
     bearerAuth:
@@ -449,6 +688,31 @@ components:
       schema:
         type: integer
         example: 1
+    BookingId:
+      name: booking
+      in: path
+      required: true
+      description: Booking primary key
+      schema:
+        type: integer
+        example: 10
+    PaymentId:
+      name: payment
+      in: path
+      required: true
+      description: Payment primary key
+      schema:
+        type: integer
+        example: 20
+    PaymentReference:
+      name: reference
+      in: path
+      required: true
+      description: Public payment reference UUID
+      schema:
+        type: string
+        format: uuid
+        example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
   schemas:
     LoginRequest:
       type: object
@@ -500,6 +764,13 @@ components:
           type: string
           description: Token type to send in the Authorization header
           example: Bearer
+        user:
+          $ref: '#/components/schemas/UserSummary'
+    AuthMeResponse:
+      type: object
+      additionalProperties: false
+      required: [user]
+      properties:
         user:
           $ref: '#/components/schemas/UserSummary'
     Slot:
@@ -563,6 +834,12 @@ components:
           nullable: true
           description: Hold expiry timestamp
           example: '2026-04-21T12:15:00.000000Z'
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Payment settlement timestamp when booking is paid
+          example: '2026-04-22T12:05:00.000000Z'
         status:
           type: string
           description: Current booking status
@@ -652,6 +929,160 @@ components:
           description: Authenticated user's bookings
           items:
             $ref: '#/components/schemas/BookingWithSlot'
+    CreatePaymentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        method:
+          type: string
+          enum: [MANUAL_TRANSFER, CASH]
+          example: MANUAL_TRANSFER
+    PaymentSlotSummary:
+      type: object
+      additionalProperties: false
+      required: [id, slot_number, status, price]
+      properties:
+        id:
+          type: integer
+          example: 1
+        slot_number:
+          type: integer
+          example: 11
+        status:
+          type: string
+          enum: [TERSEDIA, DIBOOKING, PERBAIKAN]
+          example: DIBOOKING
+        price:
+          type: integer
+          example: 55000
+    PaymentBookingSummary:
+      type: object
+      additionalProperties: false
+      required: [id, status, booking_time, expires_at, paid_at, slot]
+      properties:
+        id:
+          type: integer
+          example: 10
+        status:
+          type: string
+          enum: [PENDING, SUCCESS, CANCELLED]
+          example: PENDING
+        booking_time:
+          type: string
+          format: date-time
+          example: '2026-04-22T12:00:00.000000Z'
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-04-22T12:15:00.000000Z'
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        slot:
+          $ref: '#/components/schemas/PaymentSlotSummary'
+    Payment:
+      type: object
+      additionalProperties: false
+      required:
+        [reference, provider, method, status, amount, currency, checkout_url, expires_at, paid_at, booking]
+      properties:
+        reference:
+          type: string
+          format: uuid
+          example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+        provider:
+          type: string
+          example: MANUAL
+        method:
+          type: string
+          enum: [MANUAL_TRANSFER, CASH]
+          example: MANUAL_TRANSFER
+        status:
+          type: string
+          enum: [PENDING, PAID, FAILED, EXPIRED, CANCELLED]
+          example: PENDING
+        amount:
+          type: integer
+          example: 55000
+        currency:
+          type: string
+          example: IDR
+        checkout_url:
+          type: string
+          nullable: true
+          example: http://localhost:3000/payments/2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-04-22T12:15:00.000000Z'
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        booking:
+          $ref: '#/components/schemas/PaymentBookingSummary'
+    PaymentResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Instruksi pembayaran berhasil disiapkan.
+        data:
+          $ref: '#/components/schemas/Payment'
+    PaymentWebhookRequest:
+      type: object
+      additionalProperties: false
+      required: [payment_reference, status]
+      properties:
+        payment_reference:
+          type: string
+          format: uuid
+          example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+        status:
+          type: string
+          enum: [PAID, FAILED, EXPIRED, CANCELLED]
+          example: PAID
+        event_type:
+          type: string
+          example: payment.settled
+        event_time:
+          type: string
+          format: date-time
+          example: '2026-04-22T12:05:00.000000Z'
+    PaymentWebhookResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Webhook pembayaran berhasil diproses.
+        data:
+          type: object
+          additionalProperties: false
+          required: [reference, status]
+          properties:
+            reference:
+              type: string
+              format: uuid
+              example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+            status:
+              type: string
+              enum: [PENDING, PAID, FAILED, EXPIRED, CANCELLED]
+              example: PAID
     CreateSlotRequest:
       type: object
       additionalProperties: false
@@ -714,6 +1145,57 @@ components:
           type: string
           description: Human-readable deletion result
           example: Lapak berhasil dihapus
+    AdminDashboardResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Dashboard admin berhasil diambil.
+        data:
+          type: object
+          additionalProperties: true
+          description: Aggregated admin metrics, trend data, and transaction feeds.
+    AdminCashConfirmRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note:
+          type: string
+          example: Pembayaran diterima di kasir.
+    AdminCashConfirmResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Pembayaran tunai berhasil dikonfirmasi.
+        data:
+          type: object
+          additionalProperties: false
+          required: [reference, status, paid_at]
+          properties:
+            reference:
+              type: string
+              format: uuid
+              example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+            status:
+              type: string
+              enum: [PAID]
+              example: PAID
+            paid_at:
+              type: string
+              format: date-time
+              nullable: true
+              example: '2026-04-22T12:05:00.000000Z'
     MessageResponse:
       type: object
       additionalProperties: false

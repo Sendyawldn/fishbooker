@@ -1,7 +1,7 @@
 {
   "project": "FishBooker",
-  "lastReviewed": "2026-04-21",
-  "surface": "customer-booking-mvp",
+  "lastReviewed": "2026-04-22",
+  "surface": "customer-booking-and-admin-operations",
   "goals": [
     "Show slot availability clearly before the user attempts a booking",
     "Make login and booking possible from the same page",
@@ -25,7 +25,9 @@
     "booking confirmation dialog",
     "admin slot control board",
     "admin slot create-edit dialog",
-    "booking history board"
+    "booking history board",
+    "payment board",
+    "admin analytics dashboard"
   ],
   "interactionPrinciples": [
     "Status should be visible before the user clicks into details",
@@ -33,8 +35,7 @@
     "A successful booking should expose the hold expiry time to the user"
   ],
   "currentGaps": [
-    "no admin analytics dashboard",
-    "no backend-managed http-only session for route protection",
+    "no production gateway integration yet",
     "no dedicated loading or error route patterns"
   ]
 }

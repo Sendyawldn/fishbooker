@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
@@ -12,7 +13,12 @@ import {
   Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getMyBookings, type BookingWithSlot, ApiError } from "@/lib/api";
+import {
+  getMyBookings,
+  initiateBookingPayment,
+  type BookingWithSlot,
+  ApiError,
+} from "@/lib/api";
 import {
   AuthSession,
   readAuthSession,
@@ -89,15 +95,20 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default function BookingHistoryPageClient() {
+  const router = useRouter();
   const [session, setSession] = useState<AuthSession | null>(null);
   const [bookings, setBookings] = useState<BookingWithSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [bookingIdProcessingPayment, setBookingIdProcessingPayment] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
-    const nextSession = readAuthSession();
-    setSession(nextSession);
+    void readAuthSession().then((activeSession) => {
+      setSession(activeSession);
+    });
 
     return subscribeAuthSession((updatedSession) => {
       setSession(updatedSession);
@@ -105,7 +116,7 @@ export default function BookingHistoryPageClient() {
   }, []);
 
   async function refreshBookings(isManual = false): Promise<void> {
-    const activeSession = readAuthSession();
+    const activeSession = await readAuthSession();
 
     if (!activeSession) {
       setIsLoading(false);
@@ -122,13 +133,32 @@ export default function BookingHistoryPageClient() {
     setErrorMessage(null);
 
     try {
-      const nextBookings = await getMyBookings(activeSession.accessToken);
+      const nextBookings = await getMyBookings();
       setBookings(nextBookings);
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+    }
+  }
+
+  async function handleContinuePayment(bookingId: number): Promise<void> {
+    setBookingIdProcessingPayment(bookingId);
+    setErrorMessage(null);
+
+    try {
+      const paymentResponse = await initiateBookingPayment(
+        bookingId,
+        "MANUAL_TRANSFER",
+      );
+
+      router.push(`/payments/${paymentResponse.data.reference}`);
+      router.refresh();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setBookingIdProcessingPayment(null);
     }
   }
 
@@ -351,6 +381,17 @@ export default function BookingHistoryPageClient() {
                             #{booking.id}
                           </span>
                         </div>
+                        {booking.status === "PENDING" ? (
+                          <Button
+                            className="w-full bg-slate-900 text-white hover:bg-slate-800"
+                            onClick={() => void handleContinuePayment(booking.id)}
+                            disabled={bookingIdProcessingPayment === booking.id}
+                          >
+                            {bookingIdProcessingPayment === booking.id
+                              ? "Menyiapkan pembayaran..."
+                              : "Lanjut Bayar"}
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
                   </div>

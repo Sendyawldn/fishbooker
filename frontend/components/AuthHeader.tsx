@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Fish, MapPin, ShieldCheck, User, UserCheck } from "lucide-react";
-import { ApiError, login } from "@/lib/api";
 import {
   AuthSession,
   clearAuthSession,
-  persistAuthSession,
+  loginWithAuthSession,
   readAuthSession,
   subscribeAuthSession,
 } from "@/lib/auth-session";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function AuthHeader() {
+  const router = useRouter();
   const [session, setSession] = useState<AuthSession | null>(null);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -31,7 +33,9 @@ export default function AuthHeader() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setSession(readAuthSession());
+    void readAuthSession().then((activeSession) => {
+      setSession(activeSession);
+    });
 
     return subscribeAuthSession((nextSession) => {
       setSession(nextSession);
@@ -54,11 +58,11 @@ export default function AuthHeader() {
     setLoading(true);
 
     try {
-      const loginResponse = await login(email, password);
-      const nextSession = persistAuthSession(loginResponse);
+      const nextSession = await loginWithAuthSession(email, password);
       setSession(nextSession);
       setOpen(false);
       setPassword("");
+      router.refresh();
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.message);
@@ -70,9 +74,10 @@ export default function AuthHeader() {
     }
   };
 
-  const handleLogout = () => {
-    clearAuthSession();
+  const handleLogout = async () => {
+    await clearAuthSession();
     setSession(null);
+    router.refresh();
   };
 
   return (
@@ -97,12 +102,20 @@ export default function AuthHeader() {
             Denah Kolam
           </Link>
           {isAdmin ? (
-            <Link
-              href="/admin/slots"
-              className="transition-colors hover:text-emerald-600"
-            >
-              Kelola Slot
-            </Link>
+            <>
+              <Link
+                href="/admin/dashboard"
+                className="transition-colors hover:text-emerald-600"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/admin/slots"
+                className="transition-colors hover:text-emerald-600"
+              >
+                Kelola Slot
+              </Link>
+            </>
           ) : (
             <Link
               href="/bookings"
@@ -143,7 +156,7 @@ export default function AuthHeader() {
               variant="outline"
               size="sm"
               className="rounded-full border-slate-300 bg-white text-slate-700"
-              onClick={handleLogout}
+              onClick={() => void handleLogout()}
             >
               Logout
             </Button>
