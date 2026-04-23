@@ -11,6 +11,7 @@ FishBooker has completed the MVP foundation for:
 - admin slot CRUD at the API level
 - admin slot control in the frontend
 - admin booking operations console for pending-hold cancellation
+- booking governance controls for kill switch, hold limit, and customer blacklist
 - booking history API and frontend route
 - booking holds with 15-minute expiry logic
 - payment creation and Midtrans/manual webhook settlement
@@ -107,5 +108,5 @@ Still missing:
 
 1. Replace Midtrans sandbox credentials with production credentials.
 2. Wire `payments:health-check` and structured logs into the chosen alerting platform.
-3. Expand admin tools from analytics into richer operational booking management.
+3. Commit and enable the prepared GitHub Actions release workflows.
 4. Publish the OpenAPI contract automatically in CI or release workflows.

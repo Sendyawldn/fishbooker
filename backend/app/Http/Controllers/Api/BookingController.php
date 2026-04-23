@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreBookingRequest;
 use App\Models\Booking;
 use App\Models\Slot;
+use App\Services\Bookings\BookingAccessControlService;
 use App\Services\Bookings\BookingLifecycleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class BookingController extends Controller
 {
     public function __construct(
         private readonly BookingLifecycleService $bookingLifecycleService,
+        private readonly BookingAccessControlService $bookingAccessControlService,
     ) {
     }
 
@@ -70,6 +72,18 @@ class BookingController extends Controller
         try {
             return DB::transaction(function () use ($slotId, $user): JsonResponse {
                 $now = now();
+
+                $this->bookingLifecycleService->cancelExpiredBookingsForUser($user->id);
+
+                $bookingAccess = $this->bookingAccessControlService->evaluateBookingAccessForUser($user);
+
+                if (! $bookingAccess['allowed']) {
+                    return response()->json([
+                        'error' => $bookingAccess['error'],
+                        'message' => $bookingAccess['message'],
+                        ...$bookingAccess['context'],
+                    ], $bookingAccess['status']);
+                }
 
                 $slot = Slot::query()
                     ->whereKey($slotId)

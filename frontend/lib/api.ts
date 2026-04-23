@@ -176,6 +176,41 @@ export interface AdminBookingsResponse {
   };
 }
 
+export interface AdminBookingControls {
+  bookings_enabled: boolean;
+  max_active_holds_per_user: number;
+}
+
+export interface AdminBookingControlsResponse {
+  success: boolean;
+  message: string;
+  data: AdminBookingControls;
+}
+
+export interface AdminCustomer {
+  id: number;
+  name: string;
+  email: string;
+  role: AuthSessionUser["role"];
+  is_booking_blocked: boolean;
+  booking_block_reason: string | null;
+  active_pending_bookings_count: number;
+  successful_bookings_count: number;
+  cancelled_bookings_count: number;
+}
+
+export interface AdminCustomersResponse {
+  success: boolean;
+  message: string;
+  data: AdminCustomer[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
 interface RequestJsonOptions {
   baseUrl?: string;
 }
@@ -403,5 +438,76 @@ export async function cancelAdminBooking(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ note }),
+  });
+}
+
+export async function getAdminBookingControls(): Promise<AdminBookingControls> {
+  const result = await requestAppJson<AdminBookingControlsResponse>(
+    "/api/admin/operations/booking-controls",
+    {
+      cache: "no-store",
+    },
+  );
+
+  return result.data;
+}
+
+export async function updateAdminBookingControls(
+  payload: Partial<AdminBookingControls>,
+): Promise<AdminBookingControlsResponse> {
+  return requestAppJson<AdminBookingControlsResponse>(
+    "/api/admin/operations/booking-controls",
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function getAdminCustomers(params?: {
+  search?: string;
+  page?: number;
+  perPage?: number;
+}): Promise<AdminCustomersResponse> {
+  const searchParams = new URLSearchParams();
+
+  if (params?.search) {
+    searchParams.set("search", params.search);
+  }
+
+  if (params?.page) {
+    searchParams.set("page", String(params.page));
+  }
+
+  if (params?.perPage) {
+    searchParams.set("per_page", String(params.perPage));
+  }
+
+  const querySuffix = searchParams.toString();
+
+  return requestAppJson<AdminCustomersResponse>(
+    `/api/admin/customers${querySuffix ? `?${querySuffix}` : ""}`,
+    {
+      cache: "no-store",
+    },
+  );
+}
+
+export async function updateAdminCustomerBookingAccess(
+  customerId: number,
+  payload: {
+    is_booking_blocked: boolean;
+    booking_block_reason?: string | null;
+  },
+): Promise<{ success: boolean; message: string; data: AdminCustomer }> {
+  return requestAppJson(`/api/admin/customers/${customerId}/booking-access`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
   });
 }

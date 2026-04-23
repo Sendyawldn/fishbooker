@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\AdminReportingController;
 use App\Http\Controllers\Api\AdminBookingOperationsController;
+use App\Http\Controllers\Api\AdminBookingControlsController;
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
     return $request->user();
@@ -33,6 +34,10 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/admin/payments/{payment}/confirm-cash', [AdminReportingController::class, 'confirmCashPayment']);
     Route::get('/admin/bookings', [AdminBookingOperationsController::class, 'index']);
     Route::post('/admin/bookings/{booking}/cancel', [AdminBookingOperationsController::class, 'cancel']);
+    Route::get('/admin/operations/booking-controls', [AdminBookingControlsController::class, 'show']);
+    Route::patch('/admin/operations/booking-controls', [AdminBookingControlsController::class, 'update']);
+    Route::get('/admin/customers', [AdminBookingControlsController::class, 'customers']);
+    Route::patch('/admin/customers/{user}/booking-access', [AdminBookingControlsController::class, 'updateCustomerAccess']);
 });
 
 Route::prefix('v1')->group(function () {
@@ -56,5 +61,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/admin/payments/{payment}/confirm-cash', [AdminReportingController::class, 'confirmCashPayment']);
         Route::get('/admin/bookings', [AdminBookingOperationsController::class, 'index']);
         Route::post('/admin/bookings/{booking}/cancel', [AdminBookingOperationsController::class, 'cancel']);
+        Route::get('/admin/operations/booking-controls', [AdminBookingControlsController::class, 'show']);
+        Route::patch('/admin/operations/booking-controls', [AdminBookingControlsController::class, 'update']);
+        Route::get('/admin/customers', [AdminBookingControlsController::class, 'customers']);
+        Route::patch('/admin/customers/{user}/booking-access', [AdminBookingControlsController::class, 'updateCustomerAccess']);
     });
 });

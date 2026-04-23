@@ -335,6 +335,64 @@ Behavior:
 - If the latest payment is a pending Midtrans payment, FishBooker first asks Midtrans to expire the transaction.
 - The booking is then marked `CANCELLED`, the slot is released, and the pending payment attempt is closed locally.
 
+### Admin booking controls
+
+`GET /api/v1/admin/operations/booking-controls`
+
+Returns the current operational booking controls:
+
+- `bookings_enabled`
+- `max_active_holds_per_user`
+
+`PATCH /api/v1/admin/operations/booking-controls`
+
+Request body:
+
+```json
+{
+  "bookings_enabled": false,
+  "max_active_holds_per_user": 1
+}
+```
+
+Behavior:
+
+- Only admins may call this endpoint.
+- `bookings_enabled=false` acts as a kill switch for new booking creation.
+- `max_active_holds_per_user` limits the number of active pending holds a single customer may own.
+
+`GET /api/v1/admin/customers`
+
+Optional query params:
+
+- `search=<customer name or email>`
+- `per_page=<1..50>`
+
+Returns paginated customer booking-control data with:
+
+- block status
+- block reason
+- active pending booking count
+- successful booking count
+- cancelled booking count
+
+`PATCH /api/v1/admin/customers/{user}/booking-access`
+
+Request body:
+
+```json
+{
+  "is_booking_blocked": true,
+  "booking_block_reason": "Sering booking tanpa pembayaran."
+}
+```
+
+Behavior:
+
+- Only admins may call this endpoint.
+- Only customer accounts may be blocked or restored.
+- A blocked customer cannot create new bookings until the admin restores access.
+
 ## Error Semantics
 
 Common error responses in the current implementation:
@@ -346,12 +404,16 @@ Common error responses in the current implementation:
 - `403 Forbidden`
   - Authenticated user is not an admin for admin routes
   - A payment or booking does not belong to the authenticated user
+  - Customer account is blocked from creating new bookings
 - `422 Unprocessable Entity`
   - Validation error
   - Slot is locked by another booking hold
   - Booking hold is expired before payment creation
   - Admin attempts to confirm a non-cash payment
   - Admin attempts to cancel a non-pending booking
+  - Customer exceeds the active hold limit
+- `503 Service Unavailable`
+  - Booking kill switch is active and new bookings are temporarily disabled
 
 ## Current Provider Scope
 

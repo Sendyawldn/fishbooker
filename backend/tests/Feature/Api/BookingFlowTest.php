@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Booking;
+use App\Models\OperationalSetting;
 use App\Models\Slot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -207,5 +208,89 @@ class BookingFlowTest extends TestCase
             'id' => $slot->id,
             'status' => 'TERSEDIA',
         ]);
+    }
+
+    public function test_booking_creation_is_blocked_when_kill_switch_is_enabled(): void
+    {
+        $user = User::factory()->create();
+        $slot = Slot::create([
+            'slot_number' => 27,
+            'status' => 'TERSEDIA',
+            'price' => 50000,
+        ]);
+
+        OperationalSetting::create([
+            'key' => 'bookings_enabled',
+            'value' => '0',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/bookings', [
+            'slot_id' => $slot->id,
+        ])
+            ->assertStatus(503)
+            ->assertJsonPath('error', 'BOOKING_DISABLED');
+    }
+
+    public function test_blocked_customer_cannot_create_booking(): void
+    {
+        $user = User::factory()->create([
+            'is_booking_blocked' => true,
+            'booking_block_reason' => 'Blacklist operasional.',
+        ]);
+        $slot = Slot::create([
+            'slot_number' => 28,
+            'status' => 'TERSEDIA',
+            'price' => 50000,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/bookings', [
+            'slot_id' => $slot->id,
+        ])
+            ->assertForbidden()
+            ->assertJsonPath('error', 'BOOKING_BLOCKED')
+            ->assertJsonPath('message', 'Blacklist operasional.');
+    }
+
+    public function test_customer_cannot_exceed_active_pending_booking_limit(): void
+    {
+        $user = User::factory()->create();
+
+        OperationalSetting::create([
+            'key' => 'max_active_holds_per_user',
+            'value' => '1',
+        ]);
+
+        $firstSlot = Slot::create([
+            'slot_number' => 29,
+            'status' => 'DIBOOKING',
+            'price' => 50000,
+        ]);
+        $secondSlot = Slot::create([
+            'slot_number' => 30,
+            'status' => 'TERSEDIA',
+            'price' => 50000,
+        ]);
+
+        Booking::create([
+            'user_id' => $user->id,
+            'slot_id' => $firstSlot->id,
+            'booking_time' => now(),
+            'expires_at' => now()->addMinutes(15),
+            'status' => 'PENDING',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/bookings', [
+            'slot_id' => $secondSlot->id,
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'BOOKING_LIMIT_REACHED')
+            ->assertJsonPath('active_pending_bookings', 1)
+            ->assertJsonPath('max_active_holds_per_user', 1);
     }
 }

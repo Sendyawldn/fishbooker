@@ -18,6 +18,7 @@ The repository is now beyond the original MVP slice and includes:
 - admin analytics dashboard and finance CSV export
 - Next.js payment page with Midtrans sandbox checkout handoff and cash flow support
 - admin booking operations API and frontend page
+- booking governance controls for kill switch, hold limit, and customer blacklist
 - app router loading, error, and not-found recovery states
 - structured operational logging on critical frontend BFF routes
 - backend payment health check command for stale pending state
@@ -53,9 +54,10 @@ The current docs now reflect that the repository includes:
 - finance journal storage
 - admin dashboard API and frontend
 - admin booking operations API and frontend
+- booking governance controls enforced in booking creation
 - backend-supported HTTP-only auth trust on the frontend
 
-Remaining non-implemented areas are now mostly production credential rollout, alert-routing, or deeper operational tooling concerns rather than missing user-facing core flows.
+Remaining non-implemented areas are now mostly production credential rollout, alert-routing, release workflow publishing, or deeper operational tooling concerns rather than missing user-facing core flows.
 
 ## Evidence Used
 

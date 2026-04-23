@@ -208,6 +208,9 @@ export default function AdminDashboardPageClient() {
               <Button asChild variant="outline">
                 <Link href="/admin/bookings">Kelola Booking</Link>
               </Button>
+              <Button asChild variant="outline">
+                <Link href="/admin/controls">Booking Controls</Link>
+              </Button>
             </div>
           </div>
         </div>

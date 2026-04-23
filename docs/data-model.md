@@ -1,6 +1,6 @@
 # FishBooker Data Model
 
-Last reviewed: 2026-04-22
+Last reviewed: 2026-04-23
 
 ## Scope
 
@@ -20,8 +20,15 @@ Key columns:
 - `email_verified_at` timestamp nullable
 - `password` string
 - `role` enum: `ADMIN`, `PELANGGAN`
+- `is_booking_blocked` boolean
+- `booking_block_reason` string nullable
 - `remember_token`
 - `created_at`, `updated_at`
+
+Notes:
+
+- `is_booking_blocked` is used by admin booking governance controls to prevent a customer from creating new bookings.
+- `booking_block_reason` stores the operational explanation shown back to the blocked customer.
 
 ### `slots`
 
@@ -150,6 +157,22 @@ Notes:
 
 - The implemented entry type today is `PAYMENT_CAPTURED`.
 - Application code treats the table as append-only and does not update or delete journal rows during normal flows.
+
+### `operational_settings`
+
+Purpose: runtime-configurable operations flags managed by admins without code changes.
+
+Key columns:
+
+- `key` string primary key
+- `value` text nullable
+- `updated_by` foreign key nullable to `users.id`
+- `created_at`, `updated_at`
+
+Notes:
+
+- Current keys in code are `bookings_enabled` and `max_active_holds_per_user`.
+- These settings back the booking kill switch and active hold limit.
 
 ## Authentication and Framework Tables
 
