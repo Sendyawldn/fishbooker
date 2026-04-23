@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Bookings\BookingLifecycleService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -58,6 +59,12 @@ class PaymentService
                 ->first();
 
             if ($existingPayment) {
+                Log::info('payments.reused_pending_payment', [
+                    'booking_id' => $lockedBooking->id,
+                    'payment_id' => $existingPayment->id,
+                    'user_id' => $lockedBooking->user_id,
+                ]);
+
                 return $existingPayment->fresh(['booking.slot']);
             }
 
@@ -79,6 +86,15 @@ class PaymentService
                 'metadata' => [
                     'booking_time' => $lockedBooking->booking_time?->toISOString(),
                 ],
+            ]);
+
+            Log::info('payments.created_pending_payment', [
+                'booking_id' => $lockedBooking->id,
+                'payment_id' => $payment->id,
+                'user_id' => $lockedBooking->user_id,
+                'method' => $method,
+                'provider' => $payment->provider,
+                'expires_at' => $payment->expires_at?->toISOString(),
             ]);
 
             return $payment->fresh(['booking.slot']);

@@ -1,6 +1,6 @@
 # FishBooker Delivery Roadmap
 
-Last reviewed: 2026-04-22
+Last reviewed: 2026-04-23
 
 ## Current Delivery Summary
 
@@ -82,18 +82,27 @@ Still missing:
 
 ### Stage 5: Hardening and Release Readiness
 
-Status: not started
+Status: partial
 
-Missing:
+Delivered:
 
-- frontend test coverage
-- API contract publishing workflow
-- deployment runbooks for production
-- observability and alerting
+- frontend route recovery states (`loading`, `error`, `not-found`)
+- frontend unit test runner baseline
+- GitHub Actions CI for frontend and backend
+- structured logging on critical auth, booking, and payment flows
+- backend payment health check command
+- deployment notes for environment and release posture
+
+Still missing:
+
+- production payment gateway adapter
+- platform-specific alert routing and dashboards
+- broader frontend test depth beyond current baseline
+- API contract publishing automation
 
 ## Recommended Next Steps
 
 1. Replace the manual payment provider with a production gateway adapter.
-2. Add observability and alerting around webhook failures and stuck payments.
+2. Wire `payments:health-check` and structured logs into the chosen alerting platform.
 3. Expand admin tools from analytics into operational booking management.
-4. Add production-facing deployment documentation once targets are confirmed.
+4. Publish the OpenAPI contract automatically in CI or release workflows.

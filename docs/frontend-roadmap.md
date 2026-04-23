@@ -1,6 +1,6 @@
 # FishBooker Frontend Status and Roadmap
 
-Last reviewed: 2026-04-22
+Last reviewed: 2026-04-23
 
 ## Current State
 
@@ -98,13 +98,20 @@ Completed:
 
 ### Phase F4: production hardening
 
-Status: not started
+Status: partial
 
-Missing:
+Delivered:
 
-- loading and error boundaries
-- frontend tests
+- app router loading shells
+- root error recovery screen
+- not-found recovery screen
+- frontend unit test runner baseline
 - deployment notes
+
+Still missing:
+
+- richer component and integration coverage
+- platform-specific observability export
 
 ## Recommended Next Frontend Work
 

@@ -1,6 +1,6 @@
 # FishBooker Technical Documentation Status
 
-Last reviewed: 2026-04-22
+Last reviewed: 2026-04-23
 
 ## Current Project State
 
@@ -17,6 +17,10 @@ The repository is now beyond the original MVP slice and includes:
 - payment-to-booking settlement and finance journal writes
 - admin analytics dashboard and finance CSV export
 - Next.js payment page with sandbox transfer simulation and cash flow support
+- app router loading, error, and not-found recovery states
+- structured operational logging on critical frontend BFF routes
+- backend payment health check command for stale pending state
+- frontend unit test runner and CI workflow baseline
 
 ## Documentation Audit Result
 
@@ -48,7 +52,7 @@ The current docs now reflect that the repository includes:
 - admin dashboard API and frontend
 - backend-supported HTTP-only auth trust on the frontend
 
-Remaining non-implemented areas are mostly provider-specific or production-hardening concerns, not the core feature slice itself.
+Remaining non-implemented areas are now mostly provider-specific, alert-routing, or deeper operational tooling concerns rather than missing user-facing core flows.
 
 ## Evidence Used
 

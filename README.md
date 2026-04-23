@@ -1,7 +1,7 @@
 # FishBooker
 
 FishBooker is a fish pond slot booking project built as a monorepo with a Laravel API and a Next.js frontend.
-The current repository delivers slot discovery, HTTP-only frontend auth trust, admin slot management, booking holds that prevent double booking for 15 minutes, payment sandbox flows, and admin reporting.
+The current repository delivers slot discovery, HTTP-only frontend auth trust, admin slot management, booking holds that prevent double booking for 15 minutes, payment sandbox flows, admin reporting, frontend recovery states, and baseline CI coverage.
 
 ## Repository Structure
 
@@ -46,6 +46,10 @@ Frontend:
 - admin dashboard frontend with CSV export
 - payment page with transfer sandbox simulation and cash confirmation flow
 - interactive frontend map and booking modal
+- frontend loading, error, and not-found shells for critical routes
+- structured route logging for auth, booking, and payment actions
+- backend payment health check command
+- frontend test runner and GitHub Actions CI
 
 ## Next Follow-ups
 
@@ -72,7 +76,9 @@ Frontend:
 ```bash
 cd frontend
 npm install
+cp .env.example .env.local
 npm run lint
+npm test
 npm run dev
 ```
 
@@ -89,6 +95,7 @@ Default local URLs:
 - `docs/openapi.yaml`
 - `docs/data-model.md`
 - `docs/local-dev-setup.md`
+- `docs/deployment.md`
 - `docs/roadmap.md`
 - `docs/frontend-roadmap.md`
 - `docs/runbook.md`

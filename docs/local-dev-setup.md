@@ -1,6 +1,6 @@
 # Local Development Setup
 
-Last reviewed: 2026-04-22
+Last reviewed: 2026-04-23
 
 ## Prerequisites
 
@@ -55,16 +55,10 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 ```bash
 cd frontend
 npm install
+cp .env.example .env.local
 ```
 
-Optional environment file:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-AUTH_SESSION_COOKIE_SECRET=change-this-frontend-session-secret
-AUTH_SESSION_MAX_AGE_SECONDS=43200
-MANUAL_PAYMENT_WEBHOOK_SECRET=local-manual-payment-secret
-```
+The default local values now live in `frontend/.env.example`.
 
 Run the frontend:
 
@@ -95,6 +89,13 @@ Frontend production build:
 ```bash
 cd frontend
 npm run build
+```
+
+Frontend unit tests:
+
+```bash
+cd frontend
+npm test
 ```
 
 Reset database:

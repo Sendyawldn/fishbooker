@@ -5,6 +5,10 @@ import {
   getRequiredServerAccessToken,
   requestBackendJson,
 } from "@/lib/server/backend-api";
+import {
+  getRequestCorrelationId,
+  logServerEvent,
+} from "@/lib/server/observability";
 
 type PaymentStatus = "PAID" | "FAILED" | "CANCELLED";
 
@@ -27,6 +31,8 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ reference: string }> },
 ) {
+  const requestId = getRequestCorrelationId(request);
+  const startedAt = Date.now();
   const { reference } = await context.params;
   const accessToken = await getRequiredServerAccessToken().catch((error) => {
     if (error instanceof BackendApiError) {
@@ -37,6 +43,13 @@ export async function POST(
   });
 
   if (accessToken instanceof BackendApiError) {
+    logServerEvent("warn", "frontend.payments.simulate.unauthorized", {
+      requestId,
+      reference,
+      status: accessToken.status,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(
       {
         message: accessToken.message,
@@ -52,6 +65,13 @@ export async function POST(
   const status = body?.status ?? "PAID";
 
   if (!["PAID", "FAILED", "CANCELLED"].includes(status)) {
+    logServerEvent("warn", "frontend.payments.simulate.invalid_status", {
+      requestId,
+      reference,
+      statusAttempted: status,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(
       {
         message: "Status simulasi pembayaran tidak valid.",
@@ -91,9 +111,23 @@ export async function POST(
       },
     });
 
+    logServerEvent("info", "frontend.payments.simulate.success", {
+      requestId,
+      reference,
+      paymentStatus: status,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(updatedPayment);
   } catch (error) {
     if (error instanceof BackendApiError) {
+      logServerEvent("warn", "frontend.payments.simulate.backend_error", {
+        requestId,
+        reference,
+        status: error.status,
+        durationMs: Date.now() - startedAt,
+      });
+
       return NextResponse.json(
         {
           message: error.message,
@@ -101,6 +135,12 @@ export async function POST(
         { status: error.status },
       );
     }
+
+    logServerEvent("error", "frontend.payments.simulate.unhandled_error", {
+      requestId,
+      reference,
+      durationMs: Date.now() - startedAt,
+    });
 
     return NextResponse.json(
       {

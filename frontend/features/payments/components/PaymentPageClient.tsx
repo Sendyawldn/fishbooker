@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getPaymentStatusTone } from "@/features/payments/lib/payment-helpers";
 
 interface PaymentPageClientProps {
   reference: string;
@@ -55,20 +56,6 @@ function getErrorMessage(error: unknown): string {
   }
 
   return "Halaman pembayaran belum bisa dimuat sekarang.";
-}
-
-function getStatusTone(payment: PaymentDetails): string {
-  if (payment.status === "PAID") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  }
-
-  if (payment.status === "PENDING") {
-    return payment.method === "CASH"
-      ? "border-amber-200 bg-amber-50 text-amber-700"
-      : "border-sky-200 bg-sky-50 text-sky-700";
-  }
-
-  return "border-rose-200 bg-rose-50 text-rose-700";
 }
 
 export default function PaymentPageClient({
@@ -214,7 +201,7 @@ export default function PaymentPageClient({
                 <div
                   className={cn(
                     "mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em]",
-                    getStatusTone(payment),
+                    getPaymentStatusTone(payment),
                   )}
                 >
                   {payment.status}

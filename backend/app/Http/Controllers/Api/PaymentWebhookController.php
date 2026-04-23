@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Payments\PaymentWebhookService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaymentWebhookController extends Controller
 {
@@ -16,6 +17,12 @@ class PaymentWebhookController extends Controller
         $rawPayload = $request->getContent();
 
         if (! $paymentWebhookService->verifyManualWebhookSignature($rawPayload, $signature)) {
+            Log::warning('payments.manual_webhook.invalid_signature', [
+                'event_id' => $eventId,
+                'payment_reference' => $request->input('payment_reference'),
+                'ip' => $request->ip(),
+            ]);
+
             return response()->json([
                 'message' => 'Webhook signature tidak valid.',
             ], 401);
@@ -40,6 +47,13 @@ class PaymentWebhookController extends Controller
             $eventId,
             $signature,
         );
+
+        Log::info('payments.manual_webhook.accepted', [
+            'event_id' => $eventId,
+            'payment_reference' => $result['payment']->reference,
+            'payment_status' => $result['payment']->status,
+            'duplicate' => $result['duplicate'],
+        ]);
 
         return response()->json([
             'success' => true,

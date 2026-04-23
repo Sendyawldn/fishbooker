@@ -1,6 +1,6 @@
 # FishBooker Operations Runbook
 
-Last reviewed: 2026-04-22
+Last reviewed: 2026-04-23
 
 ## Scope
 
@@ -59,6 +59,13 @@ cd backend
 ./vendor/bin/sail artisan test
 ```
 
+Payment health check:
+
+```bash
+cd backend
+./vendor/bin/sail artisan payments:health-check
+```
+
 ## Frontend Operations
 
 Install dependencies:
@@ -87,6 +94,13 @@ Build:
 ```bash
 cd frontend
 npm run build
+```
+
+Frontend unit tests:
+
+```bash
+cd frontend
+npm test
 ```
 
 ## Logs and Diagnostics
@@ -118,6 +132,7 @@ cd backend
 - Confirm `./vendor/bin/sail up -d` is running
 - Confirm the browser can reach `http://localhost:8000`
 - Confirm `NEXT_PUBLIC_API_BASE_URL` points to the backend host
+- Check frontend server logs for the request id emitted by the BFF route layer
 
 ### Booking requests fail with auth errors
 
@@ -132,9 +147,14 @@ cd backend
 - Confirm the payment row exists in the `payments` table
 - Confirm webhook calls are reaching `POST /api/v1/payments/webhooks/manual`
 - Check `payment_webhook_events` and `financial_journals` for settlement evidence
+- Run `php artisan payments:health-check` to detect stale pending payments or expired pending bookings
+- Review backend logs for `payments.manual_webhook.*` events
+- Review frontend server logs for `frontend.payments.*` events
 
 ### Booking lock behavior looks wrong
 
 - Check the selected cache driver in the Laravel environment
 - Prefer a lock-capable driver such as Redis for realistic concurrency behavior
 - Reset the database and retry with a clean state if needed
+- Run `php artisan payments:health-check`
+- Review `frontend.bookings.create.*` logs for the request id and duration

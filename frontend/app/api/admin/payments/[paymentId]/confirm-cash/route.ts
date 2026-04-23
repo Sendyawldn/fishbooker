@@ -4,11 +4,17 @@ import {
   getRequiredServerAccessToken,
   requestBackendJson,
 } from "@/lib/server/backend-api";
+import {
+  getRequestCorrelationId,
+  logServerEvent,
+} from "@/lib/server/observability";
 
 export async function POST(
   request: Request,
   context: { params: Promise<{ paymentId: string }> },
 ) {
+  const requestId = getRequestCorrelationId(request);
+  const startedAt = Date.now();
   const { paymentId } = await context.params;
   const accessToken = await getRequiredServerAccessToken().catch((error) => {
     if (error instanceof BackendApiError) {
@@ -19,6 +25,13 @@ export async function POST(
   });
 
   if (accessToken instanceof BackendApiError) {
+    logServerEvent("warn", "frontend.admin.cash_confirm.unauthorized", {
+      requestId,
+      paymentId,
+      status: accessToken.status,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(
       {
         message: accessToken.message,
@@ -42,9 +55,22 @@ export async function POST(
       },
     );
 
+    logServerEvent("info", "frontend.admin.cash_confirm.success", {
+      requestId,
+      paymentId,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(response);
   } catch (error) {
     if (error instanceof BackendApiError) {
+      logServerEvent("warn", "frontend.admin.cash_confirm.backend_error", {
+        requestId,
+        paymentId,
+        status: error.status,
+        durationMs: Date.now() - startedAt,
+      });
+
       return NextResponse.json(
         {
           message: error.message,
@@ -55,6 +81,12 @@ export async function POST(
         { status: error.status },
       );
     }
+
+    logServerEvent("error", "frontend.admin.cash_confirm.unhandled_error", {
+      requestId,
+      paymentId,
+      durationMs: Date.now() - startedAt,
+    });
 
     return NextResponse.json(
       {

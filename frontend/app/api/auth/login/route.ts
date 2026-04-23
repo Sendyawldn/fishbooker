@@ -2,6 +2,10 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { BackendApiError, requestBackendJson } from "@/lib/server/backend-api";
 import {
+  getRequestCorrelationId,
+  logServerEvent,
+} from "@/lib/server/observability";
+import {
   setAuthCookies,
   type AuthenticatedUser,
 } from "@/lib/server/auth-cookies";
@@ -12,6 +16,8 @@ interface BackendLoginResponse {
 }
 
 export async function POST(request: Request) {
+  const requestId = getRequestCorrelationId(request);
+  const startedAt = Date.now();
   const body = (await request.json().catch(() => null)) as
     | { email?: string; password?: string }
     | null;
@@ -21,6 +27,11 @@ export async function POST(request: Request) {
     typeof body.email !== "string" ||
     typeof body.password !== "string"
   ) {
+    logServerEvent("warn", "frontend.auth.login.invalid_payload", {
+      requestId,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(
       {
         message: "Email dan password wajib dikirim.",
@@ -44,11 +55,24 @@ export async function POST(request: Request) {
     const cookieStore = await cookies();
     setAuthCookies(cookieStore, loginResponse.access_token, loginResponse.user);
 
+    logServerEvent("info", "frontend.auth.login.success", {
+      requestId,
+      userId: loginResponse.user.id,
+      role: loginResponse.user.role,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json({
       user: loginResponse.user,
     });
   } catch (error) {
     if (error instanceof BackendApiError) {
+      logServerEvent("warn", "frontend.auth.login.backend_error", {
+        requestId,
+        status: error.status,
+        durationMs: Date.now() - startedAt,
+      });
+
       return NextResponse.json(
         {
           message: error.message,
@@ -57,6 +81,11 @@ export async function POST(request: Request) {
         { status: error.status },
       );
     }
+
+    logServerEvent("error", "frontend.auth.login.unhandled_error", {
+      requestId,
+      durationMs: Date.now() - startedAt,
+    });
 
     return NextResponse.json(
       {

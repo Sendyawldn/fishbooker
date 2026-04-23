@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Bookings\BookingLifecycleService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -56,6 +57,13 @@ class PaymentWebhookService
                     ->with(['booking.slot', 'booking.user'])
                     ->where('reference', $paymentReference)
                     ->firstOrFail();
+
+                Log::info('payments.manual_webhook.duplicate', [
+                    'event_id' => $eventId,
+                    'payment_id' => $payment->id,
+                    'payment_reference' => $paymentReference,
+                    'payment_status' => $payment->status,
+                ]);
 
                 return [
                     'processed' => true,
@@ -110,6 +118,16 @@ class PaymentWebhookService
                         ],
                     ],
                 );
+
+                Log::info('payments.manual_webhook.settled', [
+                    'event_id' => $eventId,
+                    'payment_id' => $payment->id,
+                    'payment_reference' => $paymentReference,
+                    'booking_id' => $payment->booking_id,
+                    'method' => $payment->method,
+                    'provider' => $payment->provider,
+                    'paid_at' => $eventTime->toISOString(),
+                ]);
             }
 
             if (in_array($paymentStatus, ['FAILED', 'EXPIRED', 'CANCELLED'], true)) {
@@ -118,6 +136,14 @@ class PaymentWebhookService
                 ])->save();
 
                 $this->bookingLifecycleService->cancelBooking($payment->booking);
+
+                Log::warning('payments.manual_webhook.payment_closed_without_success', [
+                    'event_id' => $eventId,
+                    'payment_id' => $payment->id,
+                    'payment_reference' => $paymentReference,
+                    'booking_id' => $payment->booking_id,
+                    'payment_status' => $paymentStatus,
+                ]);
             }
 
             return [
@@ -164,6 +190,14 @@ class PaymentWebhookService
         ];
 
         $eventId = 'cash-confirm-'.Str::uuid();
+
+        Log::info('payments.cash_confirmation.requested', [
+            'event_id' => $eventId,
+            'payment_id' => $payment->id,
+            'payment_reference' => $payment->reference,
+            'booking_id' => $payment->booking_id,
+            'admin_user_id' => $adminUser->id,
+        ]);
 
         return $this->processManualWebhook($payload, $eventId, null)['payment'];
     }

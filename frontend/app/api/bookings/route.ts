@@ -4,8 +4,14 @@ import {
   getRequiredServerAccessToken,
   requestBackendJson,
 } from "@/lib/server/backend-api";
+import {
+  getRequestCorrelationId,
+  logServerEvent,
+} from "@/lib/server/observability";
 
 export async function POST(request: Request) {
+  const requestId = getRequestCorrelationId(request);
+  const startedAt = Date.now();
   const accessToken = await getRequiredServerAccessToken().catch((error) => {
     if (error instanceof BackendApiError) {
       return error;
@@ -15,6 +21,12 @@ export async function POST(request: Request) {
   });
 
   if (accessToken instanceof BackendApiError) {
+    logServerEvent("warn", "frontend.bookings.create.unauthorized", {
+      requestId,
+      status: accessToken.status,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(
       {
         message: accessToken.message,
@@ -35,9 +47,20 @@ export async function POST(request: Request) {
       body,
     });
 
+    logServerEvent("info", "frontend.bookings.create.success", {
+      requestId,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(response);
   } catch (error) {
     if (error instanceof BackendApiError) {
+      logServerEvent("warn", "frontend.bookings.create.backend_error", {
+        requestId,
+        status: error.status,
+        durationMs: Date.now() - startedAt,
+      });
+
       return NextResponse.json(
         {
           message: error.message,
@@ -48,6 +71,11 @@ export async function POST(request: Request) {
         { status: error.status },
       );
     }
+
+    logServerEvent("error", "frontend.bookings.create.unhandled_error", {
+      requestId,
+      durationMs: Date.now() - startedAt,
+    });
 
     return NextResponse.json(
       {
