@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getPaymentStatusTone } from "../features/payments/lib/payment-helpers.ts";
+import {
+  getPaymentMethodLabel,
+  getPaymentStatusTone,
+} from "../features/payments/lib/payment-helpers.ts";
 
 test("should use success tone when payment is paid", () => {
   assert.equal(
@@ -40,4 +43,8 @@ test("should use failure tone for non pending and non paid states", () => {
     }),
     "border-rose-200 bg-rose-50 text-rose-700",
   );
+});
+
+test("should label midtrans snap payment method clearly", () => {
+  assert.equal(getPaymentMethodLabel("MIDTRANS_SNAP"), "Midtrans Demo");
 });

@@ -1,7 +1,7 @@
 # FishBooker
 
 FishBooker is a fish pond slot booking project built as a monorepo with a Laravel API and a Next.js frontend.
-The current repository delivers slot discovery, HTTP-only frontend auth trust, admin slot management, booking holds that prevent double booking for 15 minutes, payment sandbox flows, admin reporting, frontend recovery states, and baseline CI coverage.
+The current repository delivers slot discovery, HTTP-only frontend auth trust, admin slot management, admin booking operations, booking holds that prevent double booking for 15 minutes, Midtrans sandbox payment flows, admin reporting, frontend recovery states, and baseline CI coverage.
 
 ## Repository Structure
 
@@ -37,24 +37,25 @@ Frontend:
 - public slot listing
 - admin slot create, update, and delete API
 - admin slot management page in the frontend
+- admin booking operations page in the frontend
 - user booking history API and frontend page
 - frontend route protection using signed HTTP-only cookies and `proxy.ts`
 - booking hold flow with expiry recovery
 - payment creation for pending bookings
-- signed manual webhook settlement
+- signed Midtrans and manual webhook settlement
 - finance journal writes and revenue reporting API
 - admin dashboard frontend with CSV export
-- payment page with transfer sandbox simulation and cash confirmation flow
+- payment page with Midtrans sandbox checkout and cash confirmation flow
 - interactive frontend map and booking modal
 - frontend loading, error, and not-found shells for critical routes
 - structured route logging for auth, booking, and payment actions
-- backend payment health check command
-- frontend test runner and GitHub Actions CI
+- backend payment health check command with optional webhook alerting
+- frontend test runner and GitHub Actions CI/release-readiness workflows
 
 ## Next Follow-ups
 
-- swap the manual payment provider to a production gateway
-- add deployment-grade observability for payment and webhook failures
+- replace Midtrans sandbox credentials with production credentials
+- connect payment health alerts and logs to the chosen observability platform
 - expand reporting exports and operational filters
 - harden session/token rotation for production environments
 

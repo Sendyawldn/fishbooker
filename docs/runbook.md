@@ -144,11 +144,14 @@ cd backend
 ### Payment page does not move from pending
 
 - Confirm `MANUAL_PAYMENT_WEBHOOK_SECRET` matches in both `frontend/.env` and `backend/.env`
+- Confirm the backend `MIDTRANS_SERVER_KEY` is the sandbox key when running demo flow
 - Confirm the payment row exists in the `payments` table
 - Confirm webhook calls are reaching `POST /api/v1/payments/webhooks/manual`
+- Confirm Midtrans notifications are reaching `POST /api/v1/payments/webhooks/midtrans`
 - Check `payment_webhook_events` and `financial_journals` for settlement evidence
 - Run `php artisan payments:health-check` to detect stale pending payments or expired pending bookings
 - Review backend logs for `payments.manual_webhook.*` events
+- Review backend logs for `payments.midtrans_webhook.*` events
 - Review frontend server logs for `frontend.payments.*` events
 
 ### Booking lock behavior looks wrong

@@ -15,3 +15,15 @@ export function getPaymentStatusTone(
 
   return "border-rose-200 bg-rose-50 text-rose-700";
 }
+
+export function getPaymentMethodLabel(method: PaymentDetails["method"]): string {
+  if (method === "MIDTRANS_SNAP") {
+    return "Midtrans Demo";
+  }
+
+  if (method === "MANUAL_TRANSFER") {
+    return "Manual Transfer";
+  }
+
+  return "Cash";
+}

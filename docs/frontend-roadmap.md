@@ -17,12 +17,13 @@ Implemented:
 - admin slot management route for create, edit, and delete actions
 - authenticated booking history route
 - payment page and payment initiation flow
+- admin booking operations route for pending-hold cancellation
 - admin analytics dashboard
 
 Still thin:
 
 - frontend test coverage
-- broader booking operations beyond payment continuation
+- broader booking operations beyond pending-hold cancellation
 - richer admin drill-down filters
 
 ## Current File Map
@@ -37,6 +38,7 @@ Still thin:
 - `app/api/**/*`: protected backend proxy routes
 - `features/payments/components/PaymentPageClient.tsx`
 - `features/admin-dashboard/components/AdminDashboardPageClient.tsx`
+- `features/admin-bookings/components/AdminBookingsPageClient.tsx`
 
 ## Delivery Status
 
@@ -77,22 +79,25 @@ Completed:
 
 - `/admin/slots` route
 - `/admin/dashboard` route
+- `/admin/bookings` route
 - frontend gate for admin session via signed HTTP-only cookies
 - create, edit, and delete actions wired to backend admin API
 - responsive admin inventory view for mobile and desktop
 - dashboard analytics cards backed by reporting data
 - CSV export entry point
 - cash payment confirmation queue
+- pending booking cancellation flow
 
 ### Phase F3: payments and post-booking flow
 
-Status: done for sandbox/manual provider
+Status: done for Midtrans sandbox plus manual cash provider
 
 Completed:
 
 - payment initiation from pending booking
+- Midtrans sandbox checkout handoff
 - payment detail page
-- transfer webhook simulation flow
+- provider-aware pending payment actions
 - cash payment path for admin confirmation
 - booking settlement into `SUCCESS`
 

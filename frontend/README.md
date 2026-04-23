@@ -1,6 +1,6 @@
 # FishBooker Frontend
 
-Next.js 16 frontend for customer booking, payment sandbox flow, admin slot management, and admin analytics.
+Next.js 16 frontend for customer booking, Midtrans sandbox payment flow, admin slot management, admin booking operations, and admin analytics.
 
 ## Local Setup
 
@@ -23,6 +23,6 @@ npm run build
 - homepage with interactive pond map
 - login dialog backed by same-origin BFF routes
 - booking history route
-- payment detail and simulation route
-- admin slots and admin dashboard
+- payment detail route with Midtrans checkout handoff
+- admin slots, admin booking operations, and admin dashboard
 - app router loading, error, and not-found recovery states

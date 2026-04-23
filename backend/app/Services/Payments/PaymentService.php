@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\Bookings\BookingLifecycleService;
+use App\Services\Payments\MidtransSnapService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +17,7 @@ class PaymentService
 {
     public function __construct(
         private readonly BookingLifecycleService $bookingLifecycleService,
+        private readonly MidtransSnapService $midtransSnapService,
     ) {
     }
 
@@ -68,25 +70,30 @@ class PaymentService
                 return $existingPayment->fresh(['booking.slot']);
             }
 
-            $checkoutUrl = rtrim((string) config('app.frontend_url'), '/').'/payments/';
+            $provider = $this->resolveProvider($method);
             $reference = (string) Str::uuid();
-
-            $payment = Payment::create([
+            $paymentAttributes = [
                 'booking_id' => $lockedBooking->id,
                 'user_id' => $lockedBooking->user_id,
-                'provider' => (string) config('services.manual_payment.provider', 'MANUAL'),
+                'provider' => $provider,
                 'method' => $method,
                 'status' => 'PENDING',
                 'amount' => $lockedBooking->slot->price,
                 'currency' => 'IDR',
                 'reference' => $reference,
                 'gateway_reference' => $reference,
-                'checkout_url' => $checkoutUrl.$reference,
+                'checkout_url' => null,
                 'expires_at' => $lockedBooking->expires_at,
                 'metadata' => [
                     'booking_time' => $lockedBooking->booking_time?->toISOString(),
                 ],
-            ]);
+            ];
+
+            if ($provider === (string) config('services.midtrans.provider', 'MIDTRANS')) {
+                $payment = $this->createMidtransPayment($lockedBooking, $user, $paymentAttributes);
+            } else {
+                $payment = $this->createManualPayment($paymentAttributes);
+            }
 
             Log::info('payments.created_pending_payment', [
                 'booking_id' => $lockedBooking->id,
@@ -99,6 +106,46 @@ class PaymentService
 
             return $payment->fresh(['booking.slot']);
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $paymentAttributes
+     */
+    private function createManualPayment(array $paymentAttributes): Payment
+    {
+        $reference = (string) $paymentAttributes['reference'];
+        $paymentAttributes['checkout_url'] = rtrim((string) config('app.frontend_url'), '/').'/payments/'.$reference;
+
+        return Payment::create($paymentAttributes);
+    }
+
+    /**
+     * @param  array<string, mixed>  $paymentAttributes
+     */
+    private function createMidtransPayment(Booking $booking, User $user, array $paymentAttributes): Payment
+    {
+        $payment = Payment::create($paymentAttributes);
+        $midtransTransaction = $this->midtransSnapService->createTransaction($payment->fresh(['booking.slot']), $booking, $user);
+
+        $payment->forceFill([
+            'gateway_reference' => $midtransTransaction['token'],
+            'checkout_url' => $midtransTransaction['redirect_url'],
+            'metadata' => array_merge($payment->metadata ?? [], [
+                'midtrans_token' => $midtransTransaction['token'],
+                'checkout_type' => 'SNAP_REDIRECT',
+            ]),
+        ])->save();
+
+        return $payment;
+    }
+
+    private function resolveProvider(string $method): string
+    {
+        if ($method === 'CASH') {
+            return (string) config('services.manual_payment.provider', 'MANUAL');
+        }
+
+        return (string) config('payment.default_provider', 'MIDTRANS');
     }
 
     public function getPaymentDetailForUser(string $reference, User $user): Payment

@@ -13,10 +13,11 @@ The repository is now beyond the original MVP slice and includes:
 - authenticated booking history API and frontend page
 - booking creation with a 15-minute hold and expiry recovery
 - payment creation for pending bookings
-- signed manual webhook processing
+- signed Midtrans and manual webhook processing
 - payment-to-booking settlement and finance journal writes
 - admin analytics dashboard and finance CSV export
-- Next.js payment page with sandbox transfer simulation and cash flow support
+- Next.js payment page with Midtrans sandbox checkout handoff and cash flow support
+- admin booking operations API and frontend page
 - app router loading, error, and not-found recovery states
 - structured operational logging on critical frontend BFF routes
 - backend payment health check command for stale pending state
@@ -47,12 +48,14 @@ These documents still describe product direction, but the implementation invento
 The current docs now reflect that the repository includes:
 
 - payment initiation records
-- manual webhook processing
+- Midtrans sandbox checkout integration
+- Midtrans and manual webhook processing
 - finance journal storage
 - admin dashboard API and frontend
+- admin booking operations API and frontend
 - backend-supported HTTP-only auth trust on the frontend
 
-Remaining non-implemented areas are now mostly provider-specific, alert-routing, or deeper operational tooling concerns rather than missing user-facing core flows.
+Remaining non-implemented areas are now mostly production credential rollout, alert-routing, or deeper operational tooling concerns rather than missing user-facing core flows.
 
 ## Evidence Used
 

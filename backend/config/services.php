@@ -40,4 +40,15 @@ return [
         'webhook_secret' => env('MANUAL_PAYMENT_WEBHOOK_SECRET', 'local-manual-payment-secret'),
     ],
 
+    'midtrans' => [
+        'provider' => env('MIDTRANS_PAYMENT_PROVIDER', 'MIDTRANS'),
+        'server_key' => env('MIDTRANS_SERVER_KEY'),
+        'client_key' => env('MIDTRANS_CLIENT_KEY'),
+        'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
+        'enabled_payments' => array_values(array_filter(array_map(
+            static fn (string $value): string => trim($value),
+            explode(',', (string) env('MIDTRANS_ENABLED_PAYMENTS', ''))
+        ))),
+    ],
+
 ];

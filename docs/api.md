@@ -176,6 +176,7 @@ Request body:
 
 Supported methods:
 
+- `MIDTRANS_SNAP`
 - `MANUAL_TRANSFER`
 - `CASH`
 
@@ -194,12 +195,12 @@ Example response:
   "message": "Instruksi pembayaran berhasil disiapkan.",
   "data": {
     "reference": "2db6d5f0-c508-4ff7-8f55-90b0f2719dd0",
-    "provider": "MANUAL",
-    "method": "MANUAL_TRANSFER",
+    "provider": "MIDTRANS",
+    "method": "MIDTRANS_SNAP",
     "status": "PENDING",
     "amount": 50000,
     "currency": "IDR",
-    "checkout_url": "http://localhost:3000/payments/2db6d5f0-c508-4ff7-8f55-90b0f2719dd0",
+    "checkout_url": "https://app.sandbox.midtrans.com/snap/v2/vtweb/example",
     "expires_at": "2026-04-22T12:15:00.000000Z",
     "paid_at": null
   }
@@ -244,6 +245,32 @@ Behavior:
 - Writes an immutable `PAYMENT_CAPTURED` journal row on `PAID`.
 - Cancels and releases the booking when failure-like statuses arrive.
 
+### Midtrans webhook
+
+`POST /api/v1/payments/webhooks/midtrans`
+
+Payload summary:
+
+```json
+{
+  "order_id": "2db6d5f0-c508-4ff7-8f55-90b0f2719dd0",
+  "status_code": "200",
+  "gross_amount": "50000.00",
+  "transaction_status": "settlement",
+  "transaction_id": "midtrans-demo-transaction-id",
+  "payment_type": "bank_transfer",
+  "signature_key": "<sha512>"
+}
+```
+
+Behavior:
+
+- Verifies the official Midtrans notification signature before processing.
+- Stores webhook events idempotently by `provider + event_id`.
+- Maps Midtrans status values into FishBooker payment states.
+- Marks the booking `SUCCESS` and writes finance journals on settlement.
+- Cancels and releases the booking when Midtrans reports expiry, cancel, or failure-like statuses.
+
 ### Admin dashboard and reporting
 
 `GET /api/v1/admin/dashboard`
@@ -279,6 +306,35 @@ Behavior:
 - Only `CASH` payments in `PENDING` state may be confirmed.
 - Internally reuses the same webhook-style settlement flow so booking, payment, and journal state stay consistent.
 
+### Admin booking operations
+
+`GET /api/v1/admin/bookings`
+
+Optional query params:
+
+- `status=ALL|PENDING|SUCCESS|CANCELLED`
+- `search=<customer name, email, or slot number>`
+- `per_page=<1..50>`
+
+Returns paginated admin booking data with customer, slot, and latest payment context.
+
+`POST /api/v1/admin/bookings/{booking}/cancel`
+
+Request body:
+
+```json
+{
+  "note": "Hold dibatalkan admin."
+}
+```
+
+Behavior:
+
+- Only admins may call this endpoint.
+- Only `PENDING` bookings may be cancelled.
+- If the latest payment is a pending Midtrans payment, FishBooker first asks Midtrans to expire the transaction.
+- The booking is then marked `CANCELLED`, the slot is released, and the pending payment attempt is closed locally.
+
 ## Error Semantics
 
 Common error responses in the current implementation:
@@ -286,7 +342,7 @@ Common error responses in the current implementation:
 - `401 Unauthorized`
   - Invalid email or password on login
   - Missing or invalid bearer token on protected endpoints
-  - Invalid webhook signature
+  - Invalid manual or Midtrans webhook signature
 - `403 Forbidden`
   - Authenticated user is not an admin for admin routes
   - A payment or booking does not belong to the authenticated user
@@ -295,11 +351,12 @@ Common error responses in the current implementation:
   - Slot is locked by another booking hold
   - Booking hold is expired before payment creation
   - Admin attempts to confirm a non-cash payment
+  - Admin attempts to cancel a non-pending booking
 
 ## Current Provider Scope
 
-The repository now ships a local manual payment provider and webhook contract.
-This is intentionally adapter-friendly, so a real provider such as Midtrans or Xendit can replace the manual provider later without redesigning the booking lifecycle.
+The repository now ships a Midtrans sandbox provider for redirect checkout plus the existing manual provider for cash confirmation and local fallback flows.
+The payment lifecycle remains adapter-friendly, so a different production provider can still be introduced later behind the same booking and settlement contracts.
 
 ## Related References
 

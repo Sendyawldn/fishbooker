@@ -10,9 +10,10 @@ FishBooker has completed the MVP foundation for:
 - token-based backend auth plus HTTP-only frontend session trust
 - admin slot CRUD at the API level
 - admin slot control in the frontend
+- admin booking operations console for pending-hold cancellation
 - booking history API and frontend route
 - booking holds with 15-minute expiry logic
-- payment creation and manual webhook settlement
+- payment creation and Midtrans/manual webhook settlement
 - finance journal storage and admin analytics dashboard
 - a customer-facing frontend to browse and book slots
 
@@ -56,12 +57,13 @@ Done:
 
 ### Stage 3: Payments and Booking Completion
 
-Status: done for manual sandbox provider
+Status: done for Midtrans sandbox plus manual cash fallback
 
 Delivered:
 
 - payment creation per pending booking
-- manual webhook handling
+- Midtrans sandbox checkout handoff
+- Midtrans and manual webhook handling
 - transition from `PENDING` to `SUCCESS`
 - cash confirmation flow for admin
 
@@ -78,7 +80,7 @@ Delivered:
 Still missing:
 
 - broader maintenance workflows beyond manual slot status edits
-- richer booking operations console
+- richer booking operations console beyond pending-hold cancellation
 
 ### Stage 5: Hardening and Release Readiness
 
@@ -90,19 +92,20 @@ Delivered:
 - frontend unit test runner baseline
 - GitHub Actions CI for frontend and backend
 - structured logging on critical auth, booking, and payment flows
-- backend payment health check command
+- backend payment health check command with optional webhook alerting
 - deployment notes for environment and release posture
+- release-readiness workflow and contract artifact upload
 
 Still missing:
 
-- production payment gateway adapter
+- production Midtrans credential rollout
 - platform-specific alert routing and dashboards
 - broader frontend test depth beyond current baseline
-- API contract publishing automation
+- API contract publishing automation beyond artifact upload
 
 ## Recommended Next Steps
 
-1. Replace the manual payment provider with a production gateway adapter.
+1. Replace Midtrans sandbox credentials with production credentials.
 2. Wire `payments:health-check` and structured logs into the chosen alerting platform.
-3. Expand admin tools from analytics into operational booking management.
+3. Expand admin tools from analytics into richer operational booking management.
 4. Publish the OpenAPI contract automatically in CI or release workflows.

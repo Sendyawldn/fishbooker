@@ -23,7 +23,7 @@ class PaymentController extends Controller
         }
 
         $validated = $request->validate([
-            'method' => ['nullable', 'in:MANUAL_TRANSFER,CASH'],
+            'method' => ['nullable', 'in:MANUAL_TRANSFER,MIDTRANS_SNAP,CASH'],
         ]);
 
         try {

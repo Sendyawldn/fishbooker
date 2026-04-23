@@ -368,6 +368,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationErrorResponse'
+  /api/v1/payments/webhooks/midtrans:
+    post:
+      tags: [Webhooks]
+      summary: Process a Midtrans payment notification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MidtransWebhookRequest'
+      responses:
+        '200':
+          description: Midtrans webhook processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentWebhookResponse'
+        '401':
+          description: Invalid Midtrans webhook signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
   /api/v1/admin/slots:
     post:
       tags: [Admin Slots]
@@ -673,6 +702,89 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationErrorResponse'
+  /api/v1/admin/bookings:
+    get:
+      tags: [Admin Bookings]
+      summary: Return paginated admin booking operations data
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ALL, PENDING, SUCCESS, CANCELLED]
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Booking list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBookingListResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/admin/bookings/{booking}/cancel:
+    post:
+      tags: [Admin Bookings]
+      summary: Cancel a pending booking as admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BookingId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminBookingCancelRequest'
+      responses:
+        '200':
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBookingMutationResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Authenticated user is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation failed or booking cannot be cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
 components:
   securitySchemes:
     bearerAuth:
@@ -935,8 +1047,8 @@ components:
       properties:
         method:
           type: string
-          enum: [MANUAL_TRANSFER, CASH]
-          example: MANUAL_TRANSFER
+          enum: [MIDTRANS_SNAP, MANUAL_TRANSFER, CASH]
+          example: MIDTRANS_SNAP
     PaymentSlotSummary:
       type: object
       additionalProperties: false
@@ -995,11 +1107,11 @@ components:
           example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
         provider:
           type: string
-          example: MANUAL
+          example: MIDTRANS
         method:
           type: string
-          enum: [MANUAL_TRANSFER, CASH]
-          example: MANUAL_TRANSFER
+          enum: [MIDTRANS_SNAP, MANUAL_TRANSFER, CASH]
+          example: MIDTRANS_SNAP
         status:
           type: string
           enum: [PENDING, PAID, FAILED, EXPIRED, CANCELLED]
@@ -1013,7 +1125,7 @@ components:
         checkout_url:
           type: string
           nullable: true
-          example: http://localhost:3000/payments/2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+          example: https://app.sandbox.midtrans.com/snap/v2/vtweb/example
         expires_at:
           type: string
           format: date-time
@@ -1059,6 +1171,47 @@ components:
           type: string
           format: date-time
           example: '2026-04-22T12:05:00.000000Z'
+    MidtransWebhookRequest:
+      type: object
+      additionalProperties: false
+      required: [order_id, status_code, gross_amount, transaction_status, signature_key]
+      properties:
+        order_id:
+          type: string
+          format: uuid
+          example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+        status_code:
+          type: string
+          example: '200'
+        gross_amount:
+          type: string
+          example: '50000.00'
+        transaction_status:
+          type: string
+          example: settlement
+        transaction_id:
+          type: string
+          nullable: true
+          example: midtrans-demo-transaction-id
+        payment_type:
+          type: string
+          nullable: true
+          example: bank_transfer
+        fraud_status:
+          type: string
+          nullable: true
+          example: accept
+        signature_key:
+          type: string
+          example: sha512-signature
+        transaction_time:
+          type: string
+          nullable: true
+          example: '2026-04-23 10:20:00'
+        settlement_time:
+          type: string
+          nullable: true
+          example: '2026-04-23 10:20:10'
     PaymentWebhookResponse:
       type: object
       additionalProperties: false
@@ -1083,6 +1236,129 @@ components:
               type: string
               enum: [PENDING, PAID, FAILED, EXPIRED, CANCELLED]
               example: PAID
+    AdminBookingUserSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, role]
+      properties:
+        id:
+          type: integer
+          example: 3
+        name:
+          type: string
+          example: Budi Operator
+        email:
+          type: string
+          format: email
+          example: budi@example.com
+        role:
+          type: string
+          enum: [ADMIN, PELANGGAN]
+          example: PELANGGAN
+    AdminLatestPaymentSummary:
+      type: object
+      additionalProperties: false
+      required: [id, reference, provider, method, status, amount, checkout_url, expires_at, paid_at]
+      properties:
+        id:
+          type: integer
+          example: 20
+        reference:
+          type: string
+          format: uuid
+          example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+        provider:
+          type: string
+          example: MIDTRANS
+        method:
+          type: string
+          enum: [MIDTRANS_SNAP, MANUAL_TRANSFER, CASH]
+          example: MIDTRANS_SNAP
+        status:
+          type: string
+          enum: [PENDING, PAID, FAILED, EXPIRED, CANCELLED]
+          example: PENDING
+        amount:
+          type: integer
+          example: 50000
+        checkout_url:
+          type: string
+          nullable: true
+          example: https://app.sandbox.midtrans.com/snap/v2/vtweb/example
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+    AdminBooking:
+      allOf:
+        - $ref: '#/components/schemas/BookingWithSlot'
+        - type: object
+          additionalProperties: false
+          required: [user]
+          properties:
+            user:
+              $ref: '#/components/schemas/AdminBookingUserSummary'
+            latest_payment:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/AdminLatestPaymentSummary'
+    AdminBookingListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data, meta]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Daftar booking admin berhasil diambil.
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminBooking'
+        meta:
+          type: object
+          additionalProperties: false
+          required: [current_page, last_page, per_page, total]
+          properties:
+            current_page:
+              type: integer
+              example: 1
+            last_page:
+              type: integer
+              example: 3
+            per_page:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 47
+    AdminBookingMutationResponse:
+      type: object
+      additionalProperties: false
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Booking pending berhasil dibatalkan oleh admin.
+        data:
+          $ref: '#/components/schemas/AdminBooking'
+    AdminBookingCancelRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note:
+          type: string
+          nullable: true
+          example: Hold dibatalkan admin.
     CreateSlotRequest:
       type: object
       additionalProperties: false

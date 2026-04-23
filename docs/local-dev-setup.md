@@ -60,6 +60,8 @@ cp .env.example .env.local
 
 The default local values now live in `frontend/.env.example`.
 
+For the backend, copy `backend/.env.example` and fill `MIDTRANS_SERVER_KEY` with sandbox credentials when you want to use Midtrans demo checkout.
+
 Run the frontend:
 
 ```bash
@@ -127,3 +129,4 @@ Redis is available in the local stack and should be used for realistic cache-loc
 - The frontend expects the backend to be reachable from the browser, not only from inside Docker.
 - The frontend now keeps auth trust in signed HTTP-only cookies and proxies protected API calls through Next.js route handlers.
 - The payment sandbox expects `MANUAL_PAYMENT_WEBHOOK_SECRET` in the frontend to match the same secret in `backend/.env`.
+- Midtrans sandbox checkout is active when `PAYMENT_PROVIDER=MIDTRANS` and the backend has valid sandbox keys.

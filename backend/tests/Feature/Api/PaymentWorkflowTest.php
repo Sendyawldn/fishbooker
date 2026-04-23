@@ -9,6 +9,7 @@ use App\Models\Slot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -263,5 +264,129 @@ class PaymentWorkflowTest extends TestCase
             ->assertJsonPath('data.metrics.gross_revenue_today', 100000)
             ->assertJsonPath('data.metrics.paid_today', 1)
             ->assertJsonPath('data.recent_transactions.0.reference', $payment->reference);
+    }
+
+    public function test_should_create_midtrans_snap_payment_when_provider_is_midtrans(): void
+    {
+        config()->set('payment.default_provider', 'MIDTRANS');
+        config()->set('services.midtrans.server_key', 'SB-Mid-server-demo');
+        config()->set('services.midtrans.is_production', false);
+
+        Http::fake([
+            'https://app.sandbox.midtrans.com/snap/v1/transactions' => Http::response([
+                'token' => 'midtrans-demo-token',
+                'redirect_url' => 'https://app.sandbox.midtrans.com/snap/demo-redirect',
+            ]),
+        ]);
+
+        $user = User::factory()->create([
+            'role' => 'PELANGGAN',
+        ]);
+
+        $slot = Slot::create([
+            'slot_number' => 61,
+            'status' => 'DIBOOKING',
+            'price' => 95000,
+        ]);
+
+        $booking = Booking::create([
+            'user_id' => $user->id,
+            'slot_id' => $slot->id,
+            'booking_time' => now(),
+            'expires_at' => now()->addMinutes(15),
+            'status' => 'PENDING',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/v1/bookings/{$booking->id}/payments", [
+            'method' => 'MIDTRANS_SNAP',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.provider', 'MIDTRANS')
+            ->assertJsonPath('data.method', 'MIDTRANS_SNAP')
+            ->assertJsonPath('data.checkout_url', 'https://app.sandbox.midtrans.com/snap/demo-redirect');
+
+        $this->assertDatabaseHas('payments', [
+            'booking_id' => $booking->id,
+            'provider' => 'MIDTRANS',
+            'method' => 'MIDTRANS_SNAP',
+            'status' => 'PENDING',
+            'gateway_reference' => 'midtrans-demo-token',
+        ]);
+    }
+
+    public function test_should_mark_midtrans_payment_and_booking_as_paid_when_midtrans_webhook_is_valid(): void
+    {
+        config()->set('services.midtrans.server_key', 'SB-Mid-server-demo');
+
+        $user = User::factory()->create([
+            'role' => 'PELANGGAN',
+        ]);
+
+        $slot = Slot::create([
+            'slot_number' => 62,
+            'status' => 'DIBOOKING',
+            'price' => 97000,
+        ]);
+
+        $booking = Booking::create([
+            'user_id' => $user->id,
+            'slot_id' => $slot->id,
+            'booking_time' => now(),
+            'expires_at' => now()->addMinutes(15),
+            'status' => 'PENDING',
+        ]);
+
+        $payment = Payment::create([
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'provider' => 'MIDTRANS',
+            'method' => 'MIDTRANS_SNAP',
+            'status' => 'PENDING',
+            'amount' => 97000,
+            'currency' => 'IDR',
+            'reference' => (string) Str::uuid(),
+            'gateway_reference' => 'midtrans-demo-token',
+            'checkout_url' => 'https://app.sandbox.midtrans.com/snap/demo-redirect',
+            'expires_at' => now()->addMinutes(15),
+        ]);
+
+        $payload = [
+            'order_id' => $payment->reference,
+            'status_code' => '200',
+            'gross_amount' => '97000.00',
+            'transaction_status' => 'settlement',
+            'transaction_id' => 'midtrans-transaction-123',
+            'payment_type' => 'bank_transfer',
+            'signature_key' => hash(
+                'sha512',
+                $payment->reference.'200'.'97000.00'.'SB-Mid-server-demo',
+            ),
+            'transaction_time' => now()->format('Y-m-d H:i:s'),
+            'settlement_time' => now()->format('Y-m-d H:i:s'),
+        ];
+
+        $response = $this->postJson('/api/v1/payments/webhooks/midtrans', $payload);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.reference', $payment->reference)
+            ->assertJsonPath('data.status', 'PAID');
+
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => 'PAID',
+            'gateway_reference' => 'midtrans-transaction-123',
+        ]);
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => 'SUCCESS',
+        ]);
     }
 }

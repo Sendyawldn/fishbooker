@@ -16,6 +16,7 @@ interface PaymentDetailResponse {
   success: boolean;
   data: {
     reference: string;
+    provider: string;
   };
 }
 
@@ -85,6 +86,14 @@ export async function POST(
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
+    }).then((response) => {
+      if (response.data.provider !== "MANUAL") {
+        throw new BackendApiError(
+          "Simulasi webhook hanya tersedia untuk provider manual.",
+          409,
+          response,
+        );
+      }
     });
 
     const payload = {

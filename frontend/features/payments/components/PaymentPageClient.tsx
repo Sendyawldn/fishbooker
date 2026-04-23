@@ -20,7 +20,10 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getPaymentStatusTone } from "@/features/payments/lib/payment-helpers";
+import {
+  getPaymentMethodLabel,
+  getPaymentStatusTone,
+} from "@/features/payments/lib/payment-helpers";
 
 interface PaymentPageClientProps {
   reference: string;
@@ -112,7 +115,13 @@ export default function PaymentPageClient({
   }
 
   const canSimulateTransferPayment =
-    payment?.status === "PENDING" && payment.method === "MANUAL_TRANSFER";
+    payment?.status === "PENDING" &&
+    payment.method === "MANUAL_TRANSFER" &&
+    payment.provider === "MANUAL";
+  const canOpenMidtransCheckout =
+    payment?.status === "PENDING" &&
+    payment.provider === "MIDTRANS" &&
+    Boolean(payment.checkout_url);
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#eff6ff_0%,#f8fafc_45%,#ffffff_100%)]">
@@ -231,7 +240,7 @@ export default function PaymentPageClient({
                       Metode
                     </p>
                     <p className="mt-2 text-lg font-black text-slate-900">
-                      {payment.method}
+                      {getPaymentMethodLabel(payment.method)}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-slate-50 px-4 py-4">
@@ -294,12 +303,28 @@ export default function PaymentPageClient({
                       Aksi Pembayaran
                     </p>
                     <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900">
-                      Sandbox controls
+                      Payment actions
                     </h2>
                   </div>
                 </div>
 
                 <div className="mt-6 space-y-3">
+                  {canOpenMidtransCheckout ? (
+                    <Button
+                      asChild
+                      className="w-full bg-sky-600 text-white hover:bg-sky-700"
+                    >
+                      <a
+                        href={payment.checkout_url ?? "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Lanjut ke Midtrans Demo
+                        <ArrowRight className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  ) : null}
+
                   {canSimulateTransferPayment ? (
                     <>
                       <Button
@@ -351,9 +376,9 @@ export default function PaymentPageClient({
 
                   {!canSimulateTransferPayment && payment.status !== "PAID" ? (
                     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-500">
-                      Status pembayaran sedang menunggu aksi eksternal atau
-                      konfirmasi admin. Gunakan tombol refresh untuk mengecek
-                      perubahan terbaru.
+                      {canOpenMidtransCheckout
+                        ? "Checkout Midtrans sudah siap. Buka provider checkout lalu gunakan tombol refresh untuk mengecek settlement terbaru."
+                        : "Status pembayaran sedang menunggu aksi eksternal atau konfirmasi admin. Gunakan tombol refresh untuk mengecek perubahan terbaru."}
                     </div>
                   ) : null}
                 </div>

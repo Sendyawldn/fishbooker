@@ -150,7 +150,7 @@ export default function BookingHistoryPageClient() {
     try {
       const paymentResponse = await initiateBookingPayment(
         bookingId,
-        "MANUAL_TRANSFER",
+        "MIDTRANS_SNAP",
       );
 
       router.push(`/payments/${paymentResponse.data.reference}`);

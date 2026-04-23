@@ -4,7 +4,7 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 export type SlotStatus = "TERSEDIA" | "DIBOOKING" | "PERBAIKAN";
-export type PaymentMethod = "MANUAL_TRANSFER" | "CASH";
+export type PaymentMethod = "MANUAL_TRANSFER" | "MIDTRANS_SNAP" | "CASH";
 export type PaymentStatus =
   | "PENDING"
   | "PAID"
@@ -35,6 +35,28 @@ export interface Booking {
 
 export interface BookingWithSlot extends Booking {
   slot: Slot;
+}
+
+export interface AdminBooking extends BookingWithSlot {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: AuthSessionUser["role"];
+  };
+  latest_payment?: {
+    id: number;
+    reference: string;
+    provider: string;
+    method: PaymentMethod;
+    status: PaymentStatus;
+    amount: number;
+    checkout_url: string | null;
+    expires_at: string | null;
+    paid_at: string | null;
+    created_at?: string;
+    updated_at?: string;
+  } | null;
 }
 
 export interface LoginResponse {
@@ -140,6 +162,18 @@ export interface AdminDashboardData {
     slot_number: number;
     customer_name: string;
   }>;
+}
+
+export interface AdminBookingsResponse {
+  success: boolean;
+  message: string;
+  data: AdminBooking[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 }
 
 interface RequestJsonOptions {
@@ -250,6 +284,42 @@ export async function getMyBookings(): Promise<BookingWithSlot[]> {
   return result.data;
 }
 
+export async function getAdminBookings(
+  params?: {
+    status?: "ALL" | "PENDING" | "SUCCESS" | "CANCELLED";
+    search?: string;
+    page?: number;
+    perPage?: number;
+  },
+): Promise<AdminBookingsResponse> {
+  const searchParams = new URLSearchParams();
+
+  if (params?.status) {
+    searchParams.set("status", params.status);
+  }
+
+  if (params?.search) {
+    searchParams.set("search", params.search);
+  }
+
+  if (params?.page) {
+    searchParams.set("page", String(params.page));
+  }
+
+  if (params?.perPage) {
+    searchParams.set("per_page", String(params.perPage));
+  }
+
+  const querySuffix = searchParams.toString();
+
+  return requestAppJson<AdminBookingsResponse>(
+    `/api/admin/bookings${querySuffix ? `?${querySuffix}` : ""}`,
+    {
+      cache: "no-store",
+    },
+  );
+}
+
 export async function initiateBookingPayment(
   bookingId: number,
   method: PaymentMethod,
@@ -315,6 +385,19 @@ export async function confirmCashPayment(
   };
 }> {
   return requestAppJson(`/api/admin/payments/${paymentId}/confirm-cash`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ note }),
+  });
+}
+
+export async function cancelAdminBooking(
+  bookingId: number,
+  note?: string,
+): Promise<{ success: boolean; message: string; data: AdminBooking }> {
+  return requestAppJson(`/api/admin/bookings/${bookingId}/cancel`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

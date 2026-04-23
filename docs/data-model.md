@@ -96,8 +96,8 @@ Indexes:
 
 Notes:
 
-- The local implementation uses provider `MANUAL`.
-- Supported methods in code today are `MANUAL_TRANSFER` and `CASH`.
+- The repository now supports providers `MIDTRANS` and `MANUAL`.
+- Supported methods in code today are `MIDTRANS_SNAP`, `MANUAL_TRANSFER`, and `CASH`.
 - Statuses observed in code today are `PENDING`, `PAID`, `FAILED`, `EXPIRED`, and `CANCELLED`.
 
 ### `payment_webhook_events`
