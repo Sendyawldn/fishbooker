@@ -319,6 +319,55 @@ class PaymentWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_should_create_midtrans_demo_payment_without_remote_call_when_demo_mode_is_enabled(): void
+    {
+        config()->set('payment.default_provider', 'MIDTRANS');
+        config()->set('services.midtrans.server_key', 'SB-Mid-server-demo');
+        config()->set('services.midtrans.demo_mode', true);
+
+        Http::fake();
+
+        $user = User::factory()->create([
+            'role' => 'PELANGGAN',
+        ]);
+
+        $slot = Slot::create([
+            'slot_number' => 611,
+            'status' => 'DIBOOKING',
+            'price' => 88000,
+        ]);
+
+        $booking = Booking::create([
+            'user_id' => $user->id,
+            'slot_id' => $slot->id,
+            'booking_time' => now(),
+            'expires_at' => now()->addMinutes(15),
+            'status' => 'PENDING',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/v1/bookings/{$booking->id}/payments", [
+            'method' => 'MIDTRANS_SNAP',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.provider', 'MIDTRANS')
+            ->assertJsonPath('data.method', 'MIDTRANS_SNAP')
+            ->assertJsonPath('data.checkout_url', 'https://demo.midtrans.com');
+
+        $this->assertDatabaseHas('payments', [
+            'booking_id' => $booking->id,
+            'provider' => 'MIDTRANS',
+            'method' => 'MIDTRANS_SNAP',
+            'status' => 'PENDING',
+        ]);
+
+        Http::assertNothingSent();
+    }
+
     public function test_should_mark_midtrans_payment_and_booking_as_paid_when_midtrans_webhook_is_valid(): void
     {
         config()->set('services.midtrans.server_key', 'SB-Mid-server-demo');

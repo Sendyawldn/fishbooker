@@ -114,10 +114,10 @@ export default function PaymentPageClient({
     }
   }
 
-  const canSimulateTransferPayment =
+  const canSimulatePayment =
     payment?.status === "PENDING" &&
-    payment.method === "MANUAL_TRANSFER" &&
-    payment.provider === "MANUAL";
+    ((payment.method === "MANUAL_TRANSFER" && payment.provider === "MANUAL") ||
+      (payment.method === "MIDTRANS_SNAP" && payment.provider === "MIDTRANS"));
   const canOpenMidtransCheckout =
     payment?.status === "PENDING" &&
     payment.provider === "MIDTRANS" &&
@@ -142,8 +142,8 @@ export default function PaymentPageClient({
                 </h1>
                 <p className="mt-3 text-sm leading-6 text-slate-300">
                   Halaman ini memantau status payment sandbox dan sinkron dengan
-                  webhook backend. Untuk mode transfer, kamu bisa mensimulasikan
-                  event gateway agar alur{" "}
+                  webhook backend. Untuk mode manual maupun Midtrans demo, kamu
+                  bisa mensimulasikan event gateway agar alur{" "}
                   <code className="font-mono text-sky-200">PENDING -&gt; PAID</code>{" "}
                   berjalan utuh.
                 </p>
@@ -325,7 +325,7 @@ export default function PaymentPageClient({
                     </Button>
                   ) : null}
 
-                  {canSimulateTransferPayment ? (
+                  {canSimulatePayment ? (
                     <>
                       <Button
                         className="w-full bg-emerald-500 text-white hover:bg-emerald-600"
@@ -365,7 +365,7 @@ export default function PaymentPageClient({
                     </>
                   ) : null}
 
-                  {!canSimulateTransferPayment && payment.status === "PAID" ? (
+                  {!canSimulatePayment && payment.status === "PAID" ? (
                     <Button asChild className="w-full bg-slate-900 text-white hover:bg-slate-800">
                       <Link href="/bookings">
                         Buka Riwayat Booking
@@ -374,10 +374,10 @@ export default function PaymentPageClient({
                     </Button>
                   ) : null}
 
-                  {!canSimulateTransferPayment && payment.status !== "PAID" ? (
+                  {!canSimulatePayment && payment.status !== "PAID" ? (
                     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-500">
                       {canOpenMidtransCheckout
-                        ? "Checkout Midtrans sudah siap. Buka provider checkout lalu gunakan tombol refresh untuk mengecek settlement terbaru."
+                        ? "Checkout Midtrans sudah siap. Buka provider checkout, atau gunakan tombol simulasi untuk menguji webhook lokal lalu refresh statusnya."
                         : "Status pembayaran sedang menunggu aksi eksternal atau konfirmasi admin. Gunakan tombol refresh untuk mengecek perubahan terbaru."}
                     </div>
                   ) : null}

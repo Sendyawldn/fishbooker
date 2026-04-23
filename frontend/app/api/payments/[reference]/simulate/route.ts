@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   BackendApiError,
@@ -17,6 +17,7 @@ interface PaymentDetailResponse {
   data: {
     reference: string;
     provider: string;
+    amount: number;
   };
 }
 
@@ -26,6 +27,49 @@ function buildManualWebhookSignature(rawPayload: string): string {
     "local-manual-payment-secret";
 
   return createHmac("sha256", secret).update(rawPayload).digest("hex");
+}
+
+function getMidtransWebhookSimulationServerKey(): string {
+  const serverKey = process.env.MIDTRANS_WEBHOOK_SIMULATION_SERVER_KEY;
+
+  if (!serverKey) {
+    throw new Error(
+      "MIDTRANS_WEBHOOK_SIMULATION_SERVER_KEY belum diatur untuk simulasi lokal.",
+    );
+  }
+
+  return serverKey;
+}
+
+function formatMidtransGrossAmount(amount: number): string {
+  return amount.toFixed(2);
+}
+
+function buildMidtransSimulationPayload(
+  reference: string,
+  amount: number,
+  status: PaymentStatus,
+) {
+  const statusCode = status === "PAID" ? "200" : "202";
+  const grossAmount = formatMidtransGrossAmount(amount);
+  const transactionStatus =
+    status === "PAID" ? "settlement" : status === "CANCELLED" ? "cancel" : "deny";
+  const transactionTime = new Date().toISOString().slice(0, 19).replace("T", " ");
+  const serverKey = getMidtransWebhookSimulationServerKey();
+
+  return {
+    order_id: reference,
+    status_code: statusCode,
+    gross_amount: grossAmount,
+    transaction_status: transactionStatus,
+    transaction_id: `midtrans-sim-${randomUUID()}`,
+    payment_type: "bank_transfer",
+    signature_key: createHash("sha512")
+      .update(reference + statusCode + grossAmount + serverKey)
+      .digest("hex"),
+    transaction_time: transactionTime,
+    settlement_time: status === "PAID" ? transactionTime : undefined,
+  };
 }
 
 export async function POST(
@@ -82,37 +126,54 @@ export async function POST(
   }
 
   try {
-    await requestBackendJson<PaymentDetailResponse>(`/api/v1/payments/${reference}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+    const paymentDetail = await requestBackendJson<PaymentDetailResponse>(
+      `/api/v1/payments/${reference}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    }).then((response) => {
-      if (response.data.provider !== "MANUAL") {
-        throw new BackendApiError(
-          "Simulasi webhook hanya tersedia untuk provider manual.",
-          409,
-          response,
-        );
-      }
-    });
+    );
 
-    const payload = {
-      payment_reference: reference,
-      status,
-      event_type: "payment.simulated",
-      event_time: new Date().toISOString(),
-    };
-    const rawPayload = JSON.stringify(payload);
+    if (paymentDetail.data.provider === "MANUAL") {
+      const payload = {
+        payment_reference: reference,
+        status,
+        event_type: "payment.simulated",
+        event_time: new Date().toISOString(),
+      };
+      const rawPayload = JSON.stringify(payload);
 
-    await requestBackendJson("/api/v1/payments/webhooks/manual", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Fishbooker-Event-Id": `sim-${randomUUID()}`,
-        "X-Fishbooker-Signature": buildManualWebhookSignature(rawPayload),
-      },
-      body: rawPayload,
-    });
+      await requestBackendJson("/api/v1/payments/webhooks/manual", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Fishbooker-Event-Id": `sim-${randomUUID()}`,
+          "X-Fishbooker-Signature": buildManualWebhookSignature(rawPayload),
+        },
+        body: rawPayload,
+      });
+    } else if (paymentDetail.data.provider === "MIDTRANS") {
+      const payload = buildMidtransSimulationPayload(
+        reference,
+        paymentDetail.data.amount,
+        status,
+      );
+
+      await requestBackendJson("/api/v1/payments/webhooks/midtrans", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      throw new BackendApiError(
+        "Provider pembayaran ini belum mendukung simulasi lokal.",
+        409,
+        paymentDetail,
+      );
+    }
 
     const updatedPayment = await requestBackendJson(`/api/v1/payments/${reference}`, {
       headers: {

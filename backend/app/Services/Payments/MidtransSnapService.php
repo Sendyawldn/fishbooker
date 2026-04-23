@@ -5,6 +5,7 @@ namespace App\Services\Payments;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\User;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +17,10 @@ class MidtransSnapService
      */
     public function createTransaction(Payment $payment, Booking $booking, User $user): array
     {
+        if ($this->isDemoMode()) {
+            return $this->createDemoTransaction($payment);
+        }
+
         $serverKey = $this->getServerKey();
         $response = Http::withBasicAuth($serverKey, '')
             ->acceptJson()
@@ -92,6 +97,14 @@ class MidtransSnapService
 
     public function expireTransaction(string $orderId): void
     {
+        if ($this->isDemoMode()) {
+            Log::info('payments.midtrans.expire_requested_demo_mode', [
+                'order_id' => $orderId,
+            ]);
+
+            return;
+        }
+
         Http::withBasicAuth($this->getServerKey(), '')
             ->acceptJson()
             ->asJson()
@@ -147,12 +160,35 @@ class MidtransSnapService
         return $payload;
     }
 
+    /**
+     * @return array{token: string, redirect_url: string}
+     */
+    private function createDemoTransaction(Payment $payment): array
+    {
+        $token = 'midtrans-demo-'.Str::lower((string) Str::uuid());
+
+        Log::info('payments.midtrans.demo_transaction_created', [
+            'payment_reference' => $payment->reference,
+            'token' => $token,
+        ]);
+
+        return [
+            'token' => $token,
+            'redirect_url' => 'https://demo.midtrans.com',
+        ];
+    }
+
     private function resolveExpiryDurationInMinutes(Booking $booking): int
     {
         $secondsUntilExpiry = max(now()->diffInSeconds($booking->expires_at, false), 0);
         $duration = (int) ceil($secondsUntilExpiry / 60);
 
         return max($duration, 1);
+    }
+
+    private function isDemoMode(): bool
+    {
+        return (bool) config('services.midtrans.demo_mode', false);
     }
 
     private function getServerKey(): string
