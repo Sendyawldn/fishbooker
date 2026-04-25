@@ -12,6 +12,13 @@ This checklist covers the remaining steps that must be completed outside the rep
 
 The code and workflows in this repository are already prepared for these steps. The items below describe what still needs to be done in external systems.
 
+Before touching external systems, run this repo-side validation first:
+
+```bash
+cd backend
+./vendor/bin/sail artisan release:external-readiness --production
+```
+
 ## 1. Midtrans Production Rollout
 
 Environment values to update in the backend deployment target:

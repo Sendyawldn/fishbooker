@@ -53,11 +53,12 @@ Frontend:
 
 1. Run backend tests: `php artisan test`
 2. Run frontend checks: `npm run lint && npm test && npm run build`
-3. Confirm Midtrans sandbox or production keys match the target environment.
-4. Confirm `AUTH_SESSION_COOKIE_SECRET` is unique per environment and not using the development placeholder.
-5. Run `php artisan payments:health-check --alert` before and after release when alert webhook delivery is configured.
-6. Confirm `GET /up` returns healthy on the deployed backend.
-7. Walk through `docs/external-activation-checklist.md` when promoting from sandbox-style staging to real production.
+3. Run `php artisan release:external-readiness --production`
+4. Confirm Midtrans sandbox or production keys match the target environment.
+5. Confirm `AUTH_SESSION_COOKIE_SECRET` is unique per environment and not using the development placeholder.
+6. Run `php artisan payments:health-check --alert` before and after release when alert webhook delivery is configured.
+7. Confirm `GET /up` returns healthy on the deployed backend.
+8. Walk through `docs/external-activation-checklist.md` when promoting from sandbox-style staging to real production.
 
 ## Observability Baseline
 
