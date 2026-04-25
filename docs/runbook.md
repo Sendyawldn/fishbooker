@@ -1,6 +1,6 @@
 # FishBooker Operations Runbook
 
-Last reviewed: 2026-04-23
+Last reviewed: 2026-04-25
 
 ## Scope
 
@@ -133,6 +133,7 @@ cd backend
 - Confirm the browser can reach `http://localhost:8000`
 - Confirm `NEXT_PUBLIC_API_BASE_URL` points to the backend host
 - Check frontend server logs for the request id emitted by the BFF route layer
+- Review matching `frontend.*` structured log events for the affected route family
 
 ### Booking requests fail with auth errors
 
@@ -161,3 +162,9 @@ cd backend
 - Reset the database and retry with a clean state if needed
 - Run `php artisan payments:health-check`
 - Review `frontend.bookings.create.*` logs for the request id and duration
+
+### Admin pages fail without a clear UI error
+
+- Review frontend server logs for `frontend.admin.dashboard.*`, `frontend.admin.bookings.*`, `frontend.admin.customers.*`, `frontend.admin.booking_controls.*`, and `frontend.admin.slots.*`
+- Match the request id with backend Laravel logs when the BFF route returns a backend error
+- Re-run `php artisan payments:health-check --alert` if the admin dashboard health panel reports stale payments or expired holds

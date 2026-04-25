@@ -112,6 +112,7 @@ Delivered:
 - not-found recovery screen
 - frontend unit test runner baseline
 - frontend helper coverage for auth, bookings, payments, admin dashboard, and admin controls
+- structured observability hooks across the main frontend BFF route families
 - deployment notes
 
 Still missing:

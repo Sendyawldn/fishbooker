@@ -1,6 +1,6 @@
 # FishBooker Deployment Notes
 
-Last reviewed: 2026-04-23
+Last reviewed: 2026-04-25
 
 ## Scope
 
@@ -59,7 +59,7 @@ Frontend:
 ## Observability Baseline
 
 - Collect Laravel application logs from the backend runtime.
-- Collect Next.js server logs for `/api/auth/login`, `/api/bookings`, `/api/bookings/[bookingId]/payments`, `/api/payments/[reference]/simulate`, and admin cash confirmation.
+- Collect Next.js server logs for auth session/login/logout, customer booking routes, payment detail/simulation routes, and admin BFF routes for dashboard, bookings, customers, controls, slots, and cash confirmation.
 - Persist request ids from frontend BFF logs when troubleshooting payment or auth flows.
 - Alert when `php artisan payments:health-check --alert` exits non-zero.
 

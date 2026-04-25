@@ -4,12 +4,18 @@ import {
   getRequiredServerAccessToken,
   requestBackendJson,
 } from "@/lib/server/backend-api";
+import {
+  getRequestCorrelationId,
+  logServerEvent,
+} from "@/lib/server/observability";
 
 async function proxySlotMutation(
   request: Request,
   slotId: string,
   method: "PATCH" | "DELETE",
 ) {
+  const requestId = getRequestCorrelationId(request);
+  const startedAt = Date.now();
   const accessToken = await getRequiredServerAccessToken().catch((error) => {
     if (error instanceof BackendApiError) {
       return error;
@@ -19,6 +25,17 @@ async function proxySlotMutation(
   });
 
   if (accessToken instanceof BackendApiError) {
+    logServerEvent(
+      "warn",
+      `frontend.admin.slots.${method.toLowerCase()}.unauthorized`,
+      {
+        requestId,
+        slotId,
+        status: accessToken.status,
+        durationMs: Date.now() - startedAt,
+      },
+    );
+
     return NextResponse.json(
       {
         message: accessToken.message,
@@ -37,9 +54,30 @@ async function proxySlotMutation(
       body: method === "PATCH" ? await request.text() : undefined,
     });
 
+    logServerEvent(
+      "info",
+      `frontend.admin.slots.${method.toLowerCase()}.success`,
+      {
+        requestId,
+        slotId,
+        durationMs: Date.now() - startedAt,
+      },
+    );
+
     return NextResponse.json(response);
   } catch (error) {
     if (error instanceof BackendApiError) {
+      logServerEvent(
+        "warn",
+        `frontend.admin.slots.${method.toLowerCase()}.backend_error`,
+        {
+          requestId,
+          slotId,
+          status: error.status,
+          durationMs: Date.now() - startedAt,
+        },
+      );
+
       return NextResponse.json(
         {
           message: error.message,
@@ -50,6 +88,16 @@ async function proxySlotMutation(
         { status: error.status },
       );
     }
+
+    logServerEvent(
+      "error",
+      `frontend.admin.slots.${method.toLowerCase()}.unhandled_error`,
+      {
+        requestId,
+        slotId,
+        durationMs: Date.now() - startedAt,
+      },
+    );
 
     return NextResponse.json(
       {
