@@ -1,6 +1,6 @@
 # FishBooker API Guide
 
-Last reviewed: 2026-04-22
+Last reviewed: 2026-04-25
 
 ## Scope
 
@@ -313,10 +313,17 @@ Behavior:
 Optional query params:
 
 - `status=ALL|PENDING|SUCCESS|CANCELLED`
+- `payment_status=ALL|NONE|PENDING|PAID|FAILED|EXPIRED|CANCELLED`
+- `customer_access=ALL|ACTIVE|BLOCKED`
 - `search=<customer name, email, or slot number>`
 - `per_page=<1..50>`
 
 Returns paginated admin booking data with customer, slot, and latest payment context.
+
+Each booking row now includes customer booking-access state:
+
+- `user.is_booking_blocked`
+- `user.booking_block_reason`
 
 `POST /api/v1/admin/bookings/{booking}/cancel`
 

@@ -1,6 +1,6 @@
 # FishBooker Frontend Status and Roadmap
 
-Last reviewed: 2026-04-23
+Last reviewed: 2026-04-25
 
 ## Current State
 
@@ -23,8 +23,7 @@ Implemented:
 Still thin:
 
 - frontend test coverage
-- broader booking operations beyond pending-hold cancellation
-- richer admin drill-down filters
+- richer admin drill-down filters on payment and customer access history
 
 ## Current File Map
 
@@ -87,6 +86,8 @@ Completed:
 - CSV export entry point
 - cash payment confirmation queue
 - pending booking cancellation flow
+- payment-status and customer-access filters on admin bookings
+- inline customer block and restore actions from the admin booking console
 
 ### Phase F3: payments and post-booking flow
 
@@ -122,5 +123,5 @@ Still missing:
 
 1. Add frontend tests around BFF auth helpers, payment page state changes, and admin dashboard actions.
 2. Add richer payment receipt and customer summary surfaces after settlement.
-3. Expand admin booking management beyond slot inventory and cash confirmation.
+3. Add richer booking and customer drill-down history views around the admin operations console.
 4. Introduce production-specific error boundaries and observability hooks.

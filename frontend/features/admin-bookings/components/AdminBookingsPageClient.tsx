@@ -6,7 +6,9 @@ import {
   ApiError,
   cancelAdminBooking,
   getAdminBookings,
+  updateAdminCustomerBookingAccess,
   type AdminBooking,
+  type PaymentStatus,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,8 @@ import {
 } from "@/features/admin-bookings/lib/admin-booking-helpers";
 
 type BookingStatusFilter = "ALL" | "PENDING" | "SUCCESS" | "CANCELLED";
+type PaymentStatusFilter = "ALL" | "NONE" | PaymentStatus;
+type CustomerAccessFilter = "ALL" | "ACTIVE" | "BLOCKED";
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -63,9 +67,29 @@ const STATUS_OPTIONS: BookingStatusFilter[] = [
   "CANCELLED",
 ];
 
+const PAYMENT_STATUS_OPTIONS: PaymentStatusFilter[] = [
+  "ALL",
+  "NONE",
+  "PENDING",
+  "PAID",
+  "FAILED",
+  "EXPIRED",
+  "CANCELLED",
+];
+
+const CUSTOMER_ACCESS_OPTIONS: CustomerAccessFilter[] = [
+  "ALL",
+  "ACTIVE",
+  "BLOCKED",
+];
+
 export default function AdminBookingsPageClient() {
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [statusFilter, setStatusFilter] = useState<BookingStatusFilter>("ALL");
+  const [paymentStatusFilter, setPaymentStatusFilter] =
+    useState<PaymentStatusFilter>("ALL");
+  const [customerAccessFilter, setCustomerAccessFilter] =
+    useState<CustomerAccessFilter>("ALL");
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -81,6 +105,9 @@ export default function AdminBookingsPageClient() {
   const [bookingIdBeingCancelled, setBookingIdBeingCancelled] = useState<
     number | null
   >(null);
+  const [customerIdBeingUpdated, setCustomerIdBeingUpdated] = useState<
+    number | null
+  >(null);
 
   async function refreshBookings(isManual = false): Promise<void> {
     if (isManual) {
@@ -94,6 +121,8 @@ export default function AdminBookingsPageClient() {
     try {
       const response = await getAdminBookings({
         status: statusFilter,
+        paymentStatus: paymentStatusFilter,
+        customerAccess: customerAccessFilter,
         search: appliedSearch || undefined,
         page: currentPage,
       });
@@ -114,7 +143,7 @@ export default function AdminBookingsPageClient() {
 
   useEffect(() => {
     void handleListRefresh();
-  }, [statusFilter, appliedSearch, currentPage]);
+  }, [statusFilter, paymentStatusFilter, customerAccessFilter, appliedSearch, currentPage]);
 
   const metrics = useMemo(() => {
     return summarizeAdminBookings(bookings);
@@ -145,6 +174,36 @@ export default function AdminBookingsPageClient() {
       setErrorMessage(getErrorMessage(error));
     } finally {
       setBookingIdBeingCancelled(null);
+    }
+  }
+
+  async function handleToggleCustomerAccess(booking: AdminBooking): Promise<void> {
+    const shouldBlock = !booking.user.is_booking_blocked;
+    const bookingBlockReason = shouldBlock
+      ? window.prompt(
+          `Alasan blokir booking untuk ${booking.user.name}:`,
+          booking.user.booking_block_reason ??
+            "Booking perlu ditahan sementara untuk investigasi operasional.",
+        )
+      : null;
+
+    if (shouldBlock && (!bookingBlockReason || !bookingBlockReason.trim())) {
+      return;
+    }
+
+    setCustomerIdBeingUpdated(booking.user.id);
+    setErrorMessage(null);
+
+    try {
+      await updateAdminCustomerBookingAccess(booking.user.id, {
+        is_booking_blocked: shouldBlock,
+        booking_block_reason: shouldBlock ? bookingBlockReason?.trim() : null,
+      });
+      await refreshBookings(true);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setCustomerIdBeingUpdated(null);
     }
   }
 
@@ -216,19 +275,30 @@ export default function AdminBookingsPageClient() {
           </article>
           <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-100/70">
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+              Pelanggan Diblokir
+            </p>
+            <p className="mt-2 text-4xl font-black tracking-tight text-rose-600">
+              {metrics.blockedCustomerCount}
+            </p>
+            <p className="mt-2 text-xs font-semibold text-slate-500">
+              {metrics.paidCount} payment sudah lunas di hasil filter ini
+            </p>
+          </article>
+          <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-100/70 md:col-span-3 xl:col-span-1">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
               Nilai Booking
             </p>
             <p className="mt-2 text-2xl font-black tracking-tight text-slate-900">
               {formatCurrency(metrics.visibleAmount)}
             </p>
             <p className="mt-2 text-xs font-semibold text-slate-500">
-              {metrics.paidCount} payment sudah lunas
+              Total nominal booking yang sedang terlihat
             </p>
           </article>
         </div>
 
         <section className="mt-8 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-100/70">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4">
             <div className="flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
               <Search className="h-4 w-4 text-slate-400" />
               <input
@@ -245,32 +315,94 @@ export default function AdminBookingsPageClient() {
               />
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {STATUS_OPTIONS.map((statusOption) => (
+            <div className="grid gap-4 xl:grid-cols-[1.2fr_1.35fr_0.95fr_auto]">
+              <div className="space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+                  Status Booking
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_OPTIONS.map((statusOption) => (
+                    <Button
+                      key={statusOption}
+                      variant={statusFilter === statusOption ? "default" : "outline"}
+                      className={cn(
+                        statusFilter === statusOption &&
+                          "bg-slate-950 text-white hover:bg-slate-800",
+                      )}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setStatusFilter(statusOption);
+                      }}
+                    >
+                      {statusOption}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+                  Status Payment
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {PAYMENT_STATUS_OPTIONS.map((statusOption) => (
+                    <Button
+                      key={statusOption}
+                      variant={
+                        paymentStatusFilter === statusOption ? "default" : "outline"
+                      }
+                      className={cn(
+                        paymentStatusFilter === statusOption &&
+                          "bg-slate-950 text-white hover:bg-slate-800",
+                      )}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setPaymentStatusFilter(statusOption);
+                      }}
+                    >
+                      {statusOption}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+                  Akses Pelanggan
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {CUSTOMER_ACCESS_OPTIONS.map((statusOption) => (
+                    <Button
+                      key={statusOption}
+                      variant={
+                        customerAccessFilter === statusOption ? "default" : "outline"
+                      }
+                      className={cn(
+                        customerAccessFilter === statusOption &&
+                          "bg-slate-950 text-white hover:bg-slate-800",
+                      )}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setCustomerAccessFilter(statusOption);
+                      }}
+                    >
+                      {statusOption}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-end">
                 <Button
-                  key={statusOption}
-                  variant={statusFilter === statusOption ? "default" : "outline"}
-                  className={cn(
-                    statusFilter === statusOption &&
-                      "bg-slate-950 text-white hover:bg-slate-800",
-                  )}
+                  variant="outline"
                   onClick={() => {
                     setCurrentPage(1);
-                    setStatusFilter(statusOption);
+                    setAppliedSearch(searchInput.trim());
                   }}
                 >
-                  {statusOption}
+                  Terapkan Filter
                 </Button>
-              ))}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setCurrentPage(1);
-                  setAppliedSearch(searchInput.trim());
-                }}
-              >
-                Terapkan Filter
-              </Button>
+              </div>
             </div>
           </div>
         </section>
@@ -338,6 +470,23 @@ export default function AdminBookingsPageClient() {
                         <p className="mt-1 text-xs font-medium text-slate-500">
                           {booking.user.email}
                         </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em]",
+                              booking.user.is_booking_blocked
+                                ? "border-rose-200 bg-rose-50 text-rose-700"
+                                : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                            )}
+                          >
+                            {booking.user.is_booking_blocked ? "Blocked" : "Active"}
+                          </span>
+                        </div>
+                        {booking.user.booking_block_reason ? (
+                          <p className="mt-2 text-xs font-semibold text-rose-600">
+                            {booking.user.booking_block_reason}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="rounded-2xl bg-slate-50 px-4 py-4">
                         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
@@ -404,6 +553,30 @@ export default function AdminBookingsPageClient() {
                         </Button>
                       ) : null}
 
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "mt-3 w-full",
+                          booking.user.is_booking_blocked &&
+                            "border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700",
+                          !booking.user.is_booking_blocked &&
+                            "border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-700",
+                        )}
+                        onClick={() => void handleToggleCustomerAccess(booking)}
+                        disabled={customerIdBeingUpdated === booking.user.id}
+                      >
+                        {customerIdBeingUpdated === booking.user.id ? (
+                          <>
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                            Memperbarui akses...
+                          </>
+                        ) : booking.user.is_booking_blocked ? (
+                          "Pulihkan Akses Booking"
+                        ) : (
+                          "Blokir Booking Pelanggan"
+                        )}
+                      </Button>
+
                       {booking.latest_payment?.checkout_url &&
                       booking.latest_payment.status === "PENDING" ? (
                         <Button asChild variant="outline" className="mt-3 w-full">
@@ -465,8 +638,10 @@ export default function AdminBookingsPageClient() {
         <div className="mt-8 rounded-[1.5rem] border border-slate-200 bg-white p-5 text-sm font-semibold text-slate-600 shadow-lg shadow-slate-100/70">
           <span className="inline-flex items-start gap-3">
             <ShieldAlert className="mt-0.5 h-4 w-4 text-amber-500" />
-            Pembatalan admin akan mencoba menutup payment eksternal yang masih
-            pending lebih dulu sebelum hold slot dilepas.
+            Console ini sekarang mendukung investigasi lebih cepat lewat filter
+            payment dan kontrol block/unblock pelanggan langsung dari daftar
+            booking. Pembatalan admin tetap akan mencoba menutup payment
+            eksternal yang masih pending lebih dulu sebelum hold slot dilepas.
           </span>
         </div>
       </section>

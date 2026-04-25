@@ -1,6 +1,6 @@
 # FishBooker Delivery Roadmap
 
-Last reviewed: 2026-04-23
+Last reviewed: 2026-04-25
 
 ## Current Delivery Summary
 
@@ -10,7 +10,7 @@ FishBooker has completed the MVP foundation for:
 - token-based backend auth plus HTTP-only frontend session trust
 - admin slot CRUD at the API level
 - admin slot control in the frontend
-- admin booking operations console for pending-hold cancellation
+- admin booking operations console with pending-hold cancellation, payment filters, and inline customer access control
 - booking governance controls for kill switch, hold limit, and customer blacklist
 - booking history API and frontend route
 - booking holds with 15-minute expiry logic
@@ -81,7 +81,6 @@ Delivered:
 Still missing:
 
 - broader maintenance workflows beyond manual slot status edits
-- richer booking operations console beyond pending-hold cancellation
 
 ### Stage 5: Hardening and Release Readiness
 

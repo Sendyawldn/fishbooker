@@ -25,6 +25,8 @@ const BOOKINGS_FIXTURE: AdminBooking[] = [
       name: "Budi",
       email: "budi@example.com",
       role: "PELANGGAN",
+      is_booking_blocked: true,
+      booking_block_reason: "Sering membiarkan hold kedaluwarsa.",
     },
     latest_payment: {
       id: 1,
@@ -57,6 +59,8 @@ const BOOKINGS_FIXTURE: AdminBooking[] = [
       name: "Sari",
       email: "sari@example.com",
       role: "PELANGGAN",
+      is_booking_blocked: false,
+      booking_block_reason: null,
     },
     latest_payment: {
       id: 2,
@@ -79,10 +83,14 @@ test("should return pending tone for pending admin booking", () => {
   );
 });
 
-test("should summarize pending, paid, and visible amount from admin bookings", () => {
+test(
+  "should summarize pending, paid, blocked customers, and visible amount from admin bookings",
+  () => {
   assert.deepEqual(summarizeAdminBookings(BOOKINGS_FIXTURE), {
     pendingCount: 1,
     paidCount: 1,
+    blockedCustomerCount: 1,
     visibleAmount: 175000,
   });
-});
+  },
+);

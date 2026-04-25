@@ -15,6 +15,8 @@ class AdminBookingOperationsController extends Controller
     {
         $validated = $request->validate([
             'status' => ['nullable', 'in:ALL,PENDING,SUCCESS,CANCELLED'],
+            'payment_status' => ['nullable', 'in:ALL,NONE,PENDING,PAID,FAILED,EXPIRED,CANCELLED'],
+            'customer_access' => ['nullable', 'in:ALL,ACTIVE,BLOCKED'],
             'search' => ['nullable', 'string', 'max:120'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);

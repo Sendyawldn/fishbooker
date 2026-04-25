@@ -47,7 +47,7 @@ class AdminBookingOperationsTest extends TestCase
             'status' => 'PENDING',
         ]);
 
-        Booking::create([
+        $successBooking = Booking::create([
             'user_id' => $customer->id,
             'slot_id' => $successSlot->id,
             'booking_time' => now()->subHour(),
@@ -56,16 +56,78 @@ class AdminBookingOperationsTest extends TestCase
             'status' => 'SUCCESS',
         ]);
 
+        Payment::create([
+            'booking_id' => $successBooking->id,
+            'user_id' => $customer->id,
+            'provider' => 'MIDTRANS',
+            'method' => 'MIDTRANS_SNAP',
+            'status' => 'PAID',
+            'amount' => 91000,
+            'currency' => 'IDR',
+            'reference' => 'filter-paid-reference',
+            'gateway_reference' => 'filter-paid-gateway-reference',
+            'checkout_url' => null,
+            'expires_at' => null,
+            'paid_at' => now()->subMinutes(30),
+        ]);
+
+        $blockedCustomer = User::factory()->create([
+            'name' => 'Diblokir',
+            'email' => 'blocked@example.com',
+            'role' => 'PELANGGAN',
+            'is_booking_blocked' => true,
+            'booking_block_reason' => 'Spam booking.',
+        ]);
+
+        $blockedSlot = Slot::create([
+            'slot_number' => 73,
+            'status' => 'DIBOOKING',
+            'price' => 99000,
+        ]);
+
+        $blockedBooking = Booking::create([
+            'user_id' => $blockedCustomer->id,
+            'slot_id' => $blockedSlot->id,
+            'booking_time' => now()->subMinutes(30),
+            'expires_at' => now()->addMinutes(10),
+            'status' => 'PENDING',
+        ]);
+
+        Payment::create([
+            'booking_id' => $blockedBooking->id,
+            'user_id' => $blockedCustomer->id,
+            'provider' => 'MIDTRANS',
+            'method' => 'MIDTRANS_SNAP',
+            'status' => 'PENDING',
+            'amount' => 99000,
+            'currency' => 'IDR',
+            'reference' => 'filter-pending-reference',
+            'gateway_reference' => 'filter-pending-gateway-reference',
+            'checkout_url' => 'https://example.test/blocked-checkout',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
         Sanctum::actingAs($admin);
 
-        $response = $this->getJson('/api/v1/admin/bookings?status=PENDING&search=Budi');
+        $response = $this->getJson('/api/v1/admin/bookings?payment_status=PAID&customer_access=ACTIVE&search=Budi');
 
         $response
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('meta.total', 1)
-            ->assertJsonPath('data.0.status', 'PENDING')
-            ->assertJsonPath('data.0.user.name', 'Budi Operator');
+            ->assertJsonPath('data.0.status', 'SUCCESS')
+            ->assertJsonPath('data.0.user.name', 'Budi Operator')
+            ->assertJsonPath('data.0.user.is_booking_blocked', false)
+            ->assertJsonPath('data.0.latest_payment.status', 'PAID');
+
+        $blockedResponse = $this->getJson('/api/v1/admin/bookings?status=PENDING&payment_status=PENDING&customer_access=BLOCKED');
+
+        $blockedResponse
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.user.name', 'Diblokir')
+            ->assertJsonPath('data.0.user.is_booking_blocked', true)
+            ->assertJsonPath('data.0.latest_payment.status', 'PENDING');
     }
 
     public function test_should_cancel_pending_booking_and_expire_midtrans_payment_when_admin_requests_it(): void

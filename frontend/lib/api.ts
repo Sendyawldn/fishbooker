@@ -43,6 +43,8 @@ export interface AdminBooking extends BookingWithSlot {
     name: string;
     email: string;
     role: AuthSessionUser["role"];
+    is_booking_blocked: boolean;
+    booking_block_reason: string | null;
   };
   latest_payment?: {
     id: number;
@@ -322,6 +324,15 @@ export async function getMyBookings(): Promise<BookingWithSlot[]> {
 export async function getAdminBookings(
   params?: {
     status?: "ALL" | "PENDING" | "SUCCESS" | "CANCELLED";
+    paymentStatus?:
+      | "ALL"
+      | "NONE"
+      | "PENDING"
+      | "PAID"
+      | "FAILED"
+      | "EXPIRED"
+      | "CANCELLED";
+    customerAccess?: "ALL" | "ACTIVE" | "BLOCKED";
     search?: string;
     page?: number;
     perPage?: number;
@@ -331,6 +342,14 @@ export async function getAdminBookings(
 
   if (params?.status) {
     searchParams.set("status", params.status);
+  }
+
+  if (params?.paymentStatus) {
+    searchParams.set("payment_status", params.paymentStatus);
+  }
+
+  if (params?.customerAccess) {
+    searchParams.set("customer_access", params.customerAccess);
   }
 
   if (params?.search) {

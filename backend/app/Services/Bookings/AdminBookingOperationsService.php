@@ -25,16 +25,41 @@ class AdminBookingOperationsService
     {
         $perPage = min(max((int) ($filters['per_page'] ?? 20), 1), 50);
         $status = isset($filters['status']) && is_string($filters['status']) ? $filters['status'] : null;
+        $paymentStatus = isset($filters['payment_status']) && is_string($filters['payment_status'])
+            ? $filters['payment_status']
+            : null;
+        $customerAccess = isset($filters['customer_access']) && is_string($filters['customer_access'])
+            ? $filters['customer_access']
+            : null;
         $search = isset($filters['search']) && is_string($filters['search']) ? trim($filters['search']) : null;
 
         return Booking::query()
             ->with([
                 'slot:id,slot_number,status,price,created_at,updated_at',
-                'user:id,name,email,role',
+                'user:id,name,email,role,is_booking_blocked,booking_block_reason',
                 'latestPayment',
             ])
             ->when($status && $status !== 'ALL', function ($query) use ($status): void {
                 $query->where('status', $status);
+            })
+            ->when($paymentStatus && $paymentStatus !== 'ALL', function ($query) use ($paymentStatus): void {
+                if ($paymentStatus === 'NONE') {
+                    $query->whereDoesntHave('latestPayment');
+
+                    return;
+                }
+
+                $query->whereHas('latestPayment', function ($paymentQuery) use ($paymentStatus): void {
+                    $paymentQuery->where('status', $paymentStatus);
+                });
+            })
+            ->when($customerAccess && $customerAccess !== 'ALL', function ($query) use ($customerAccess): void {
+                $query->whereHas('user', function ($userQuery) use ($customerAccess): void {
+                    $userQuery->where(
+                        'is_booking_blocked',
+                        $customerAccess === 'BLOCKED',
+                    );
+                });
             })
             ->when($search, function ($query) use ($search): void {
                 $query->where(function ($nestedQuery) use ($search): void {

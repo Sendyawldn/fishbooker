@@ -15,6 +15,7 @@ export function getAdminBookingTone(status: AdminBooking["status"]): string {
 export function summarizeAdminBookings(bookings: AdminBooking[]): {
   pendingCount: number;
   paidCount: number;
+  blockedCustomerCount: number;
   visibleAmount: number;
 } {
   return bookings.reduce(
@@ -27,6 +28,10 @@ export function summarizeAdminBookings(bookings: AdminBooking[]): {
         summary.paidCount += 1;
       }
 
+      if (booking.user.is_booking_blocked) {
+        summary.blockedCustomerCount += 1;
+      }
+
       summary.visibleAmount += booking.slot.price;
 
       return summary;
@@ -34,6 +39,7 @@ export function summarizeAdminBookings(bookings: AdminBooking[]): {
     {
       pendingCount: 0,
       paidCount: 0,
+      blockedCustomerCount: 0,
       visibleAmount: 0,
     },
   );
