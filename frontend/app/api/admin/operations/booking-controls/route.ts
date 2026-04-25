@@ -55,9 +55,20 @@ export async function GET(request: Request) {
       },
     );
 
+    logServerEvent("info", "frontend.admin.booking_controls.success", {
+      requestId,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(response);
   } catch (error) {
     if (error instanceof BackendApiError) {
+      logServerEvent("warn", "frontend.admin.booking_controls.backend_error", {
+        requestId,
+        status: error.status,
+        durationMs: Date.now() - startedAt,
+      });
+
       return NextResponse.json(
         {
           message: error.message,
@@ -84,6 +95,12 @@ export async function PATCH(request: Request) {
   const { requestId, startedAt, accessToken } = await getAccessToken(request);
 
   if (accessToken instanceof BackendApiError) {
+    logServerEvent("warn", "frontend.admin.booking_controls.unauthorized", {
+      requestId,
+      status: accessToken.status,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(
       {
         message: accessToken.message,
@@ -125,6 +142,11 @@ export async function PATCH(request: Request) {
         { status: error.status },
       );
     }
+
+    logServerEvent("error", "frontend.admin.booking_controls.update_unhandled_error", {
+      requestId,
+      durationMs: Date.now() - startedAt,
+    });
 
     return NextResponse.json(
       {

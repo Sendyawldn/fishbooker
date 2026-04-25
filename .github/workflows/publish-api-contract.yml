@@ -1,0 +1,183 @@
+name: Publish API Contract
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - docs/openapi.yaml
+      - docs/api.md
+      - docs/deployment.md
+      - .github/workflows/publish-api-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: api-contract-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build static contract bundle
+        run: |
+          mkdir -p public/contracts
+          cp docs/openapi.yaml public/contracts/openapi.yaml
+          cp docs/api.md public/contracts/api.md
+          cp docs/deployment.md public/contracts/deployment.md
+          cat <<'EOF' > public/index.html
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>FishBooker API Contract</title>
+              <style>
+                :root {
+                  color-scheme: light;
+                  font-family: "Segoe UI", sans-serif;
+                  background: #f8fafc;
+                  color: #0f172a;
+                }
+
+                body {
+                  margin: 0;
+                  min-height: 100vh;
+                  background:
+                    radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 32%),
+                    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.16), transparent 28%),
+                    #f8fafc;
+                }
+
+                main {
+                  max-width: 900px;
+                  margin: 0 auto;
+                  padding: 56px 24px 72px;
+                }
+
+                .panel {
+                  background: rgba(255, 255, 255, 0.9);
+                  border: 1px solid rgba(148, 163, 184, 0.22);
+                  border-radius: 28px;
+                  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+                  padding: 32px;
+                  backdrop-filter: blur(10px);
+                }
+
+                .eyebrow {
+                  display: inline-block;
+                  padding: 8px 14px;
+                  border-radius: 999px;
+                  background: rgba(14, 165, 233, 0.1);
+                  color: #0369a1;
+                  font-size: 12px;
+                  font-weight: 800;
+                  letter-spacing: 0.18em;
+                  text-transform: uppercase;
+                }
+
+                h1 {
+                  margin: 18px 0 12px;
+                  font-size: clamp(2.2rem, 5vw, 3.5rem);
+                  line-height: 1.05;
+                }
+
+                p {
+                  margin: 0;
+                  color: #475569;
+                  line-height: 1.7;
+                }
+
+                .grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+                  gap: 16px;
+                  margin-top: 28px;
+                }
+
+                a.card {
+                  display: block;
+                  text-decoration: none;
+                  color: inherit;
+                  border-radius: 22px;
+                  padding: 18px 20px;
+                  background: #ffffff;
+                  border: 1px solid rgba(148, 163, 184, 0.26);
+                  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+                }
+
+                a.card:hover {
+                  transform: translateY(-2px);
+                  border-color: rgba(14, 165, 233, 0.35);
+                  box-shadow: 0 16px 36px rgba(14, 165, 233, 0.12);
+                }
+
+                strong {
+                  display: block;
+                  font-size: 0.95rem;
+                  margin-bottom: 6px;
+                }
+
+                small {
+                  color: #64748b;
+                }
+              </style>
+            </head>
+            <body>
+              <main>
+                <section class="panel">
+                  <span class="eyebrow">FishBooker Contract</span>
+                  <h1>Published API contract and release docs</h1>
+                  <p>
+                    This page is generated automatically from the repository so the latest
+                    OpenAPI contract, human-readable API guide, and deployment notes stay
+                    available outside CI artifacts.
+                  </p>
+                  <div class="grid">
+                    <a class="card" href="./contracts/openapi.yaml">
+                      <strong>OpenAPI YAML</strong>
+                      <small>Machine-readable contract used by automation and integrations.</small>
+                    </a>
+                    <a class="card" href="./contracts/api.md">
+                      <strong>API Guide</strong>
+                      <small>Human-readable summary of endpoints, auth model, and behavior.</small>
+                    </a>
+                    <a class="card" href="./contracts/deployment.md">
+                      <strong>Deployment Notes</strong>
+                      <small>Operational setup and release-readiness guidance for deployments.</small>
+                    </a>
+                  </div>
+                </section>
+              </main>
+            </body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

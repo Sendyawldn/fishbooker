@@ -4,11 +4,17 @@ import {
   getRequiredServerAccessToken,
   requestBackendJson,
 } from "@/lib/server/backend-api";
+import {
+  getRequestCorrelationId,
+  logServerEvent,
+} from "@/lib/server/observability";
 
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ userId: string }> },
 ) {
+  const requestId = getRequestCorrelationId(request);
+  const startedAt = Date.now();
   const accessToken = await getRequiredServerAccessToken().catch((error) => {
     if (error instanceof BackendApiError) {
       return error;
@@ -17,7 +23,16 @@ export async function PATCH(
     throw error;
   });
 
+  const { userId } = await context.params;
+
   if (accessToken instanceof BackendApiError) {
+    logServerEvent("warn", "frontend.admin.customers.booking_access.unauthorized", {
+      requestId,
+      userId,
+      status: accessToken.status,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(
       {
         message: accessToken.message,
@@ -26,7 +41,6 @@ export async function PATCH(
     );
   }
 
-  const { userId } = await context.params;
   const body = await request.text();
 
   try {
@@ -42,9 +56,22 @@ export async function PATCH(
       },
     );
 
+    logServerEvent("info", "frontend.admin.customers.booking_access.updated", {
+      requestId,
+      userId,
+      durationMs: Date.now() - startedAt,
+    });
+
     return NextResponse.json(response);
   } catch (error) {
     if (error instanceof BackendApiError) {
+      logServerEvent("warn", "frontend.admin.customers.booking_access.backend_error", {
+        requestId,
+        userId,
+        status: error.status,
+        durationMs: Date.now() - startedAt,
+      });
+
       return NextResponse.json(
         {
           message: error.message,
@@ -55,6 +82,12 @@ export async function PATCH(
         { status: error.status },
       );
     }
+
+    logServerEvent("error", "frontend.admin.customers.booking_access.unhandled_error", {
+      requestId,
+      userId,
+      durationMs: Date.now() - startedAt,
+    });
 
     return NextResponse.json(
       {

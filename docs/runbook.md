@@ -165,6 +165,6 @@ cd backend
 
 ### Admin pages fail without a clear UI error
 
-- Review frontend server logs for `frontend.admin.dashboard.*`, `frontend.admin.bookings.*`, `frontend.admin.customers.*`, `frontend.admin.booking_controls.*`, and `frontend.admin.slots.*`
+- Review frontend server logs for `frontend.admin.dashboard.*`, `frontend.admin.bookings.*`, `frontend.admin.customers.*`, `frontend.admin.booking_controls.*`, `frontend.admin.slots.*`, `frontend.admin.finance_export.*`, and `frontend.admin.cash_confirm.*`
 - Match the request id with backend Laravel logs when the BFF route returns a backend error
 - Re-run `php artisan payments:health-check --alert` if the admin dashboard health panel reports stale payments or expired holds
