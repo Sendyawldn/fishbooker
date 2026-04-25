@@ -6,6 +6,8 @@ Last reviewed: 2026-04-25
 
 This document covers the minimum deployment posture that is now supported by the repository without locking the team to one hosting vendor.
 
+The remaining external activation work is tracked in `docs/external-activation-checklist.md`.
+
 ## Supported Topology
 
 - Laravel API as one runtime
@@ -55,6 +57,7 @@ Frontend:
 4. Confirm `AUTH_SESSION_COOKIE_SECRET` is unique per environment and not using the development placeholder.
 5. Run `php artisan payments:health-check --alert` before and after release when alert webhook delivery is configured.
 6. Confirm `GET /up` returns healthy on the deployed backend.
+7. Walk through `docs/external-activation-checklist.md` when promoting from sandbox-style staging to real production.
 
 ## Observability Baseline
 

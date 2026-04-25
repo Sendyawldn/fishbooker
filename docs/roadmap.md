@@ -105,3 +105,5 @@ Still missing:
 1. Replace Midtrans sandbox credentials with production credentials.
 2. Wire `payments:health-check` and structured logs into the chosen alerting platform.
 3. Enable the GitHub Pages environment in repository settings if contract publishing is not active yet.
+
+Use `docs/external-activation-checklist.md` as the handoff checklist for those external steps.
