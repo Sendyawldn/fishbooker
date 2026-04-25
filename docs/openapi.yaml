@@ -1730,9 +1730,185 @@ components:
           type: string
           example: Dashboard admin berhasil diambil.
         data:
-          type: object
-          additionalProperties: true
-          description: Aggregated admin metrics, trend data, and transaction feeds.
+          $ref: '#/components/schemas/AdminDashboardData'
+    AdminDashboardMetrics:
+      type: object
+      additionalProperties: false
+      required:
+        [total_slots, available_slots, maintenance_slots, occupied_slots, active_holds, pending_payments, paid_today, gross_revenue_today, gross_revenue_month, occupancy_rate_percent]
+      properties:
+        total_slots:
+          type: integer
+          example: 100
+        available_slots:
+          type: integer
+          example: 62
+        maintenance_slots:
+          type: integer
+          example: 4
+        occupied_slots:
+          type: integer
+          example: 34
+        active_holds:
+          type: integer
+          example: 6
+        pending_payments:
+          type: integer
+          example: 5
+        paid_today:
+          type: integer
+          example: 8
+        gross_revenue_today:
+          type: integer
+          example: 640000
+        gross_revenue_month:
+          type: integer
+          example: 12450000
+        occupancy_rate_percent:
+          type: number
+          format: float
+          example: 34
+    AdminDashboardOperationsHealth:
+      type: object
+      additionalProperties: false
+      required: [minutes_threshold, stale_pending_payments, expired_pending_bookings, needs_attention]
+      properties:
+        minutes_threshold:
+          type: integer
+          example: 20
+        stale_pending_payments:
+          type: integer
+          example: 1
+        expired_pending_bookings:
+          type: integer
+          example: 2
+        needs_attention:
+          type: boolean
+          example: true
+    AdminDashboardRevenueTrendEntry:
+      type: object
+      additionalProperties: false
+      required: [date, gross_revenue, paid_count]
+      properties:
+        date:
+          type: string
+          example: '2026-04-24'
+        gross_revenue:
+          type: integer
+          example: 250000
+        paid_count:
+          type: integer
+          example: 3
+    AdminDashboardSlotStatusBreakdownEntry:
+      type: object
+      additionalProperties: false
+      required: [status, count]
+      properties:
+        status:
+          type: string
+          enum: [TERSEDIA, DIBOOKING, PERBAIKAN]
+          example: DIBOOKING
+        count:
+          type: integer
+          example: 34
+    AdminDashboardRecentTransaction:
+      type: object
+      additionalProperties: false
+      required: [payment_id, reference, method, status, amount, created_at, paid_at, booking_id, slot_number, customer_name]
+      properties:
+        payment_id:
+          type: integer
+          example: 12
+        reference:
+          type: string
+          format: uuid
+          example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+        method:
+          type: string
+          enum: [MIDTRANS_SNAP, MANUAL_TRANSFER, CASH]
+          example: MANUAL_TRANSFER
+        status:
+          type: string
+          enum: [PENDING, PAID, FAILED, EXPIRED, CANCELLED]
+          example: PAID
+        amount:
+          type: integer
+          example: 100000
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        booking_id:
+          type: integer
+          example: 45
+        slot_number:
+          type: integer
+          example: 12
+        customer_name:
+          type: string
+          example: Budi Operator
+    AdminDashboardPendingCashPayment:
+      type: object
+      additionalProperties: false
+      required: [payment_id, reference, amount, booking_id, created_at, slot_number, customer_name]
+      properties:
+        payment_id:
+          type: integer
+          example: 9
+        reference:
+          type: string
+          format: uuid
+          example: 2db6d5f0-c508-4ff7-8f55-90b0f2719dd0
+        amount:
+          type: integer
+          example: 76000
+        booking_id:
+          type: integer
+          example: 19
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        slot_number:
+          type: integer
+          example: 43
+        customer_name:
+          type: string
+          example: Sari
+    AdminDashboardData:
+      type: object
+      additionalProperties: false
+      required:
+        [generated_at, metrics, operations_health, revenue_trend, slot_status_breakdown, recent_transactions, pending_cash_payments]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+          example: '2026-04-25T02:20:00.000000Z'
+        metrics:
+          $ref: '#/components/schemas/AdminDashboardMetrics'
+        operations_health:
+          $ref: '#/components/schemas/AdminDashboardOperationsHealth'
+        revenue_trend:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDashboardRevenueTrendEntry'
+        slot_status_breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDashboardSlotStatusBreakdownEntry'
+        recent_transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDashboardRecentTransaction'
+        pending_cash_payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDashboardPendingCashPayment'
     AdminCashConfirmRequest:
       type: object
       additionalProperties: false

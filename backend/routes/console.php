@@ -1,8 +1,7 @@
 <?php
 
-use App\Models\Booking;
-use App\Models\Payment;
 use App\Services\Operations\OperationsAlertService;
+use App\Services\Operations\PaymentHealthService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 
@@ -10,20 +9,14 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('payments:health-check {--minutes=20} {--alert}', function (OperationsAlertService $operationsAlertService) {
-    $minutes = max((int) $this->option('minutes'), 1);
-    $threshold = now()->subMinutes($minutes);
-
-    $stalePendingPayments = Payment::query()
-        ->where('status', 'PENDING')
-        ->where('created_at', '<=', $threshold)
-        ->count();
-
-    $expiredPendingBookings = Booking::query()
-        ->where('status', 'PENDING')
-        ->whereNotNull('expires_at')
-        ->where('expires_at', '<=', now())
-        ->count();
+Artisan::command('payments:health-check {--minutes=20} {--alert}', function (
+    OperationsAlertService $operationsAlertService,
+    PaymentHealthService $paymentHealthService,
+) {
+    $healthSummary = $paymentHealthService->buildSummary((int) $this->option('minutes'));
+    $minutes = (int) $healthSummary['minutes_threshold'];
+    $stalePendingPayments = (int) $healthSummary['stale_pending_payments'];
+    $expiredPendingBookings = (int) $healthSummary['expired_pending_bookings'];
 
     $this->table(
         ['check', 'count'],
@@ -33,7 +26,7 @@ Artisan::command('payments:health-check {--minutes=20} {--alert}', function (Ope
         ],
     );
 
-    if ($stalePendingPayments > 0 || $expiredPendingBookings > 0) {
+    if ((bool) $healthSummary['needs_attention']) {
         if ((bool) $this->option('alert')) {
             $operationsAlertService->sendPaymentHealthAlert(
                 'FishBooker mendeteksi payment atau booking stale state.',

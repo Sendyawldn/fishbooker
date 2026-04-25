@@ -22,7 +22,6 @@ Implemented:
 
 Still thin:
 
-- frontend test coverage
 - richer admin drill-down filters on payment and customer access history
 
 ## Current File Map
@@ -112,16 +111,16 @@ Delivered:
 - root error recovery screen
 - not-found recovery screen
 - frontend unit test runner baseline
+- frontend helper coverage for auth, bookings, payments, admin dashboard, and admin controls
 - deployment notes
 
 Still missing:
 
-- richer component and integration coverage
 - platform-specific observability export
 
 ## Recommended Next Frontend Work
 
-1. Add frontend tests around BFF auth helpers, payment page state changes, and admin dashboard actions.
+1. Add richer component and interaction tests around route actions and refresh loops.
 2. Add richer payment receipt and customer summary surfaces after settlement.
 3. Add richer booking and customer drill-down history views around the admin operations console.
 4. Introduce production-specific error boundaries and observability hooks.

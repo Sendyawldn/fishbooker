@@ -134,6 +134,12 @@ export interface AdminDashboardData {
     gross_revenue_month: number;
     occupancy_rate_percent: number;
   };
+  operations_health: {
+    minutes_threshold: number;
+    stale_pending_payments: number;
+    expired_pending_bookings: number;
+    needs_attention: boolean;
+  };
   revenue_trend: Array<{
     date: string;
     gross_revenue: number;

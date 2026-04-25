@@ -280,6 +280,7 @@ Returns:
 - slot occupancy metrics
 - revenue today and this month
 - active holds and pending payments
+- operational health summary for stale pending payments and expired pending bookings
 - recent transaction feed
 - pending cash payments that still need confirmation
 - 7-day revenue trend

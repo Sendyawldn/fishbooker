@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  AlertTriangle,
   ArrowUpRight,
   Banknote,
   BarChart3,
@@ -16,56 +17,19 @@ import {
   Wrench,
 } from "lucide-react";
 import {
-  ApiError,
   confirmCashPayment,
   getAdminDashboard,
   type AdminDashboardData,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-function formatCurrency(amount: number): string {
-  return `Rp ${amount.toLocaleString("id-ID")}`;
-}
-
-function formatDateTime(value?: string | null): string {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function getStatusTone(status: string): string {
-  if (status === "PAID") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  }
-
-  if (status === "PENDING") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
-  }
-
-  return "border-slate-200 bg-slate-100 text-slate-600";
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  return "Dashboard admin belum bisa dimuat sekarang.";
-}
+import {
+  formatDashboardCurrency,
+  formatDashboardDateTime,
+  getDashboardErrorMessage,
+  getDashboardOperationsHealthTone,
+  getDashboardPaymentStatusTone,
+} from "@/features/admin-dashboard/lib/admin-dashboard-helpers";
 
 export default function AdminDashboardPageClient() {
   const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
@@ -88,7 +52,7 @@ export default function AdminDashboardPageClient() {
       const nextDashboard = await getAdminDashboard();
       setDashboard(nextDashboard);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getDashboardErrorMessage(error));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -107,7 +71,7 @@ export default function AdminDashboardPageClient() {
     return [
       {
         label: "Revenue Hari Ini",
-        value: formatCurrency(dashboard.metrics.gross_revenue_today),
+        value: formatDashboardCurrency(dashboard.metrics.gross_revenue_today),
         helper: `${dashboard.metrics.paid_today} pembayaran lunas`,
         icon: <Banknote className="h-5 w-5" />,
       },
@@ -154,7 +118,7 @@ export default function AdminDashboardPageClient() {
       );
       await refreshDashboard();
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getDashboardErrorMessage(error));
     } finally {
       setCashPaymentIdBeingConfirmed(null);
     }
@@ -256,6 +220,72 @@ export default function AdminDashboardPageClient() {
               ))}
             </div>
 
+            <section className="mt-8 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-100/70">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                    Operational Health
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
+                    Tanda awal payment stale dan hold yang sudah lewat waktu.
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                    Blok ini memakai ambang{" "}
+                    {dashboard.operations_health.minutes_threshold} menit yang
+                    sama dengan health check backend, jadi tim operasional bisa
+                    tahu kapan perlu investigasi tanpa masuk ke console server.
+                  </p>
+                </div>
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em]",
+                    getDashboardOperationsHealthTone(dashboard.operations_health),
+                  )}
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  {dashboard.operations_health.needs_attention
+                    ? "Perlu Tindakan"
+                    : "Sehat"}
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <article className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                    Pending Payment Tua
+                  </p>
+                  <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
+                    {dashboard.operations_health.stale_pending_payments}
+                  </p>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    Pending payment yang melewati ambang operasional.
+                  </p>
+                </article>
+                <article className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                    Expired Hold
+                  </p>
+                  <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
+                    {dashboard.operations_health.expired_pending_bookings}
+                  </p>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    Booking pending yang sudah melewati waktu hold.
+                  </p>
+                </article>
+                <article className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                    Ambang Health Check
+                  </p>
+                  <p className="mt-3 text-3xl font-black tracking-tight text-slate-900">
+                    {dashboard.operations_health.minutes_threshold}m
+                  </p>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    Threshold yang dipakai untuk mendeteksi antrian bermasalah.
+                  </p>
+                </article>
+              </div>
+            </section>
+
             <div className="mt-8 grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
               <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-100/70">
                 <div className="flex items-center justify-between gap-4">
@@ -286,7 +316,7 @@ export default function AdminDashboardPageClient() {
                             {entry.date}
                           </span>
                           <span className="font-black text-slate-900">
-                            {formatCurrency(entry.gross_revenue)}
+                            {formatDashboardCurrency(entry.gross_revenue)}
                           </span>
                         </div>
                         <div className="h-3 overflow-hidden rounded-full bg-slate-100">
@@ -373,16 +403,16 @@ export default function AdminDashboardPageClient() {
                           <span
                             className={cn(
                               "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em]",
-                              getStatusTone(transaction.status),
+                              getDashboardPaymentStatusTone(transaction.status),
                             )}
                           >
                             {transaction.status}
                           </span>
                           <p className="mt-3 text-xl font-black text-slate-900">
-                            {formatCurrency(transaction.amount)}
+                            {formatDashboardCurrency(transaction.amount)}
                           </p>
                           <p className="mt-1 text-xs font-semibold text-slate-500">
-                            {formatDateTime(
+                            {formatDashboardDateTime(
                               transaction.paid_at ?? transaction.created_at,
                             )}
                           </p>
@@ -425,13 +455,13 @@ export default function AdminDashboardPageClient() {
                         Lapak {payment.slot_number}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-slate-600">
-                        {formatCurrency(payment.amount)}
+                        {formatDashboardCurrency(payment.amount)}
                       </p>
                       <p className="mt-2 font-mono text-[11px] text-slate-500">
                         {payment.reference}
                       </p>
                       <p className="mt-2 text-xs font-semibold text-slate-500">
-                        Dibuat {formatDateTime(payment.created_at)}
+                        Dibuat {formatDashboardDateTime(payment.created_at)}
                       </p>
                       <Button
                         className="mt-4 w-full bg-slate-900 text-white hover:bg-slate-800"

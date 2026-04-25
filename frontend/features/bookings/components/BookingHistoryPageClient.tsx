@@ -17,7 +17,6 @@ import {
   getMyBookings,
   initiateBookingPayment,
   type BookingWithSlot,
-  ApiError,
 } from "@/lib/api";
 import {
   AuthSession,
@@ -25,30 +24,13 @@ import {
   subscribeAuthSession,
 } from "@/lib/auth-session";
 import { cn } from "@/lib/utils";
-
-function getBookingTone(status: BookingWithSlot["status"]): string {
-  if (status === "SUCCESS") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  }
-
-  if (status === "PENDING") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
-  }
-
-  return "border-rose-200 bg-rose-50 text-rose-700";
-}
-
-function getBookingLabel(status: BookingWithSlot["status"]): string {
-  if (status === "SUCCESS") {
-    return "Selesai";
-  }
-
-  if (status === "PENDING") {
-    return "Masih Hold";
-  }
-
-  return "Batal / Expired";
-}
+import {
+  formatBookingHistoryCurrency,
+  formatBookingHistoryDateTime,
+  getBookingHistoryErrorMessage,
+  getBookingHistoryLabel,
+  getBookingHistoryTone,
+} from "@/features/bookings/lib/booking-history-helpers";
 
 function getBookingIcon(status: BookingWithSlot["status"]) {
   if (status === "SUCCESS") {
@@ -60,38 +42,6 @@ function getBookingIcon(status: BookingWithSlot["status"]) {
   }
 
   return <CircleX className="h-5 w-5" />;
-}
-
-function formatDateTime(isoString?: string | null): string {
-  if (!isoString) {
-    return "-";
-  }
-
-  const date = new Date(isoString);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function formatCurrency(amount: number): string {
-  return `Rp ${amount.toLocaleString("id-ID")}`;
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  return "Riwayat booking belum bisa dimuat sekarang.";
 }
 
 export default function BookingHistoryPageClient() {
@@ -136,7 +86,7 @@ export default function BookingHistoryPageClient() {
       const nextBookings = await getMyBookings();
       setBookings(nextBookings);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getBookingHistoryErrorMessage(error));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -156,7 +106,7 @@ export default function BookingHistoryPageClient() {
       router.push(`/payments/${paymentResponse.data.reference}`);
       router.refresh();
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getBookingHistoryErrorMessage(error));
     } finally {
       setBookingIdProcessingPayment(null);
     }
@@ -259,7 +209,7 @@ export default function BookingHistoryPageClient() {
               Nilai Tercatat
             </p>
             <p className="mt-2 text-2xl font-black tracking-tight text-slate-900">
-              {formatCurrency(bookingMetrics.totalValue)}
+              {formatBookingHistoryCurrency(bookingMetrics.totalValue)}
             </p>
             <p className="mt-1 text-xs font-semibold text-slate-500">
               {bookingMetrics.successCount} booking berstatus selesai
@@ -315,11 +265,11 @@ export default function BookingHistoryPageClient() {
                         <span
                           className={cn(
                             "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em]",
-                            getBookingTone(booking.status),
+                            getBookingHistoryTone(booking.status),
                           )}
                         >
                           {getBookingIcon(booking.status)}
-                          {getBookingLabel(booking.status)}
+                          {getBookingHistoryLabel(booking.status)}
                         </span>
                       </div>
 
@@ -329,7 +279,7 @@ export default function BookingHistoryPageClient() {
                             Harga Slot
                           </p>
                           <p className="mt-1 text-lg font-black text-slate-900">
-                            {formatCurrency(booking.slot.price)}
+                            {formatBookingHistoryCurrency(booking.slot.price)}
                           </p>
                         </div>
                         <div className="rounded-2xl bg-slate-50 px-4 py-3">
@@ -337,7 +287,7 @@ export default function BookingHistoryPageClient() {
                             Waktu Booking
                           </p>
                           <p className="mt-1 text-sm font-bold text-slate-700">
-                            {formatDateTime(booking.booking_time)}
+                            {formatBookingHistoryDateTime(booking.booking_time)}
                           </p>
                         </div>
                         <div className="rounded-2xl bg-slate-50 px-4 py-3">
@@ -345,7 +295,7 @@ export default function BookingHistoryPageClient() {
                             Hold Sampai
                           </p>
                           <p className="mt-1 text-sm font-bold text-slate-700">
-                            {formatDateTime(booking.expires_at)}
+                            {formatBookingHistoryDateTime(booking.expires_at)}
                           </p>
                         </div>
                       </div>
@@ -362,7 +312,7 @@ export default function BookingHistoryPageClient() {
                             Update terakhir
                           </span>
                           <span className="text-right font-bold text-slate-700">
-                            {formatDateTime(booking.updated_at)}
+                            {formatBookingHistoryDateTime(booking.updated_at)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-4">

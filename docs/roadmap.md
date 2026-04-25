@@ -70,17 +70,14 @@ Delivered:
 
 ### Stage 4: Reporting and Operations
 
-Status: partial
+Status: done for current scope
 
 Delivered:
 
 - revenue and occupancy reporting
 - financial journal tables
 - operational CSV export
-
-Still missing:
-
-- broader maintenance workflows beyond manual slot status edits
+- dashboard operational health signals for stale payments and expired booking holds
 
 ### Stage 5: Hardening and Release Readiness
 
@@ -89,23 +86,22 @@ Status: partial
 Delivered:
 
 - frontend route recovery states (`loading`, `error`, `not-found`)
-- frontend unit test runner baseline
+- frontend unit coverage across auth, payments, bookings, admin controls, and dashboard helpers
 - GitHub Actions CI for frontend and backend
+- frontend typecheck enforced in CI
 - structured logging on critical auth, booking, and payment flows
 - backend payment health check command with optional webhook alerting
 - deployment notes for environment and release posture
 - release-readiness workflow and contract artifact upload
+- GitHub Pages workflow for published OpenAPI contract and release docs
 
 Still missing:
 
 - production Midtrans credential rollout
 - platform-specific alert routing and dashboards
-- broader frontend test depth beyond current baseline
-- API contract publishing automation beyond artifact upload
 
 ## Recommended Next Steps
 
 1. Replace Midtrans sandbox credentials with production credentials.
 2. Wire `payments:health-check` and structured logs into the chosen alerting platform.
-3. Commit and enable the prepared GitHub Actions release workflows.
-4. Publish the OpenAPI contract automatically in CI or release workflows.
+3. Enable the GitHub Pages environment in repository settings if contract publishing is not active yet.

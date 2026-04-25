@@ -6,10 +6,16 @@ use App\Models\Booking;
 use App\Models\FinancialJournal;
 use App\Models\Payment;
 use App\Models\Slot;
+use App\Services\Operations\PaymentHealthService;
 use Illuminate\Support\Carbon;
 
 class AdminReportingService
 {
+    public function __construct(
+        private readonly PaymentHealthService $paymentHealthService,
+    ) {
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -58,6 +64,7 @@ class AdminReportingService
                     : 0,
             ],
             'revenue_trend' => $this->buildRevenueTrend(),
+            'operations_health' => $this->paymentHealthService->buildSummary(),
             'slot_status_breakdown' => [
                 [
                     'status' => 'TERSEDIA',

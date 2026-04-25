@@ -263,7 +263,81 @@ class PaymentWorkflowTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.metrics.gross_revenue_today', 100000)
             ->assertJsonPath('data.metrics.paid_today', 1)
+            ->assertJsonPath('data.operations_health.needs_attention', false)
             ->assertJsonPath('data.recent_transactions.0.reference', $payment->reference);
+    }
+
+    public function test_should_include_operational_health_signals_when_dashboard_has_stale_states(): void
+    {
+        config()->set('payment.health_check_minutes_threshold', 20);
+
+        $admin = User::factory()->create([
+            'role' => 'ADMIN',
+        ]);
+
+        $customer = User::factory()->create([
+            'role' => 'PELANGGAN',
+        ]);
+
+        $stalePaymentSlot = Slot::create([
+            'slot_number' => 81,
+            'status' => 'DIBOOKING',
+            'price' => 72000,
+        ]);
+
+        $expiredBookingSlot = Slot::create([
+            'slot_number' => 82,
+            'status' => 'DIBOOKING',
+            'price' => 68000,
+        ]);
+
+        $stalePaymentBooking = Booking::create([
+            'user_id' => $customer->id,
+            'slot_id' => $stalePaymentSlot->id,
+            'booking_time' => now()->subMinutes(30),
+            'expires_at' => now()->addMinutes(5),
+            'status' => 'PENDING',
+        ]);
+
+        Booking::create([
+            'user_id' => $customer->id,
+            'slot_id' => $expiredBookingSlot->id,
+            'booking_time' => now()->subMinutes(45),
+            'expires_at' => now()->subMinutes(10),
+            'status' => 'PENDING',
+        ]);
+
+        Payment::create([
+            'booking_id' => $stalePaymentBooking->id,
+            'user_id' => $customer->id,
+            'provider' => 'MANUAL',
+            'method' => 'MANUAL_TRANSFER',
+            'status' => 'PENDING',
+            'amount' => 72000,
+            'currency' => 'IDR',
+            'reference' => (string) Str::uuid(),
+            'gateway_reference' => (string) Str::uuid(),
+            'checkout_url' => 'http://localhost:3000/payments/stale-demo',
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        Payment::query()
+            ->where('booking_id', $stalePaymentBooking->id)
+            ->update([
+                'created_at' => now()->subMinutes(30),
+                'updated_at' => now()->subMinutes(30),
+            ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/v1/admin/dashboard');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.operations_health.minutes_threshold', 20)
+            ->assertJsonPath('data.operations_health.stale_pending_payments', 1)
+            ->assertJsonPath('data.operations_health.expired_pending_bookings', 1)
+            ->assertJsonPath('data.operations_health.needs_attention', true);
     }
 
     public function test_should_create_midtrans_snap_payment_when_provider_is_midtrans(): void
